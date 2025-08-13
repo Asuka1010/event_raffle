@@ -44,18 +44,6 @@
 
 <!-- Download buttons removed per UX requirement -->
 
-{% if request.session.raffle_updated_history_csv %}
-<div class="card">
-  <div class="card-header">
-    <h3>Updated Historical Database (Preview)</h3>
-  </div>
-  <div class="card-content">
-    <div class="table-container" style="max-height: 300px; overflow: auto;">
-      <pre style="white-space: pre;">{{ request.session.raffle_updated_history_csv }}</pre>
-    </div>
-  </div>
-</div>
-{% endif %}
 
 <div class="card">
   <div class="card-header">
@@ -88,9 +76,6 @@
   </div>
 </div>
 
-{% if updated_history_rows %}
-{# Historical DB preview removed as requested #}
-{% endif %}
 
 <div class="button-container">
   <a href="{% url 'raffle:upload' %}" class="btn btn-secondary">Process Another Event</a>
