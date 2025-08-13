@@ -221,7 +221,6 @@ def results_view(request: HttpRequest) -> HttpResponse:
         "event_capacity": event_capacity,
         "event_date": event_date,
         "selected": selected,
-        "updated_history_rows": updated_rows,
     }
     return render(request, "raffle/results.html", ctx)
 
