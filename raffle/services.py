@@ -245,7 +245,7 @@ def generate_ranking_csv(eligible_ranked: List[StudentRow]) -> str:
 
 
 def generate_updated_history_csv(
-    master_students: List[StudentRow],
+    base_historical_students: List[StudentRow],
     selected: List[StudentRow],
     event_name: str,
     adjustments: Optional[Dict[str, Dict[str, bool]]] = None,
@@ -270,7 +270,7 @@ def generate_updated_history_csv(
 
     # Determine widest set of event columns seen in historical data
     max_event_cols = 0
-    for s in master_students:
+    for s in base_historical_students:
         events_cols: Dict[str, Any] = s.get("_events_columns") or {}
         count = sum(1 for k in events_cols.keys() if k.startswith("event"))
         if count > max_event_cols:
@@ -289,15 +289,14 @@ def generate_updated_history_csv(
     writer = csv.writer(output)
     writer.writerow(headers)
 
-    for s in master_students:
+    for s in base_historical_students:
         email = (s.get("email") or "").lower()
         # Prefer names from historical/base if present; otherwise fall back
         first_name = s.get("first_name") or ""
         last_name = s.get("last_name") or ""
         student_class = s.get("class") or ""
 
-        name_pair = ((first_name or "").strip().lower(), (last_name or "").strip().lower())
-        is_selected = (email in selected_emails) or (name_pair in selected_name_pairs)
+        is_selected = email in selected_emails
         num_attended = int(s.get("num_events_attended") or 0) + (1 if is_selected else 0)
         num_absences = int(s.get("num_absences") or 0)
         num_late = int(s.get("num_late_arrivals") or 0)
@@ -312,7 +311,8 @@ def generate_updated_history_csv(
 
         latest_attended_label = s.get("latest_attended") or ""
         if is_selected:
-            latest_attended_label = (event_date_str or "")
+            # Historical column stores latest attended label; use event name for compatibility
+            latest_attended_label = event_name
 
         row = [email, first_name, last_name, student_class]
         # EventN columns
