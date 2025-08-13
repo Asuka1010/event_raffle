@@ -28,6 +28,13 @@
 
 <div class="card">
   <div class="card-content">
+    <form method="post" enctype="multipart/form-data" style="margin-bottom:12px;">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="upload_historical" />
+      <label>Upload CSV:</label>
+      <input type="file" name="historical_csv" accept=".csv" />
+      <button class="btn btn-secondary" type="submit">Upload</button>
+    </form>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="form_type" value="historical" />

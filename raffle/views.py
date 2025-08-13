@@ -476,7 +476,16 @@ def settings_view(request: HttpRequest) -> HttpResponse:
             if form.is_valid():
                 form.save()
                 return redirect("raffle:settings")
-        else:  # historical
+        elif form_type == "upload_historical":
+            # Handle CSV upload to replace historical DB
+            uploaded = request.FILES.get("historical_csv")
+            if uploaded:
+                rows = parse_csv_upload(uploaded)
+                csv_text = _to_csv(rows)
+                HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": csv_text})
+                request.session[SESSION_KEYS["historical"]] = rows
+            return redirect("raffle:settings")
+        else:  # historical CRUD
             try:
                 row_count = int(request.POST.get("row_count") or 0)
             except Exception:
