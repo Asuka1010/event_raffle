@@ -99,7 +99,7 @@
           </tr>
         </thead>
         <tbody>
-          {% for r in updated_history_rows|slice:':100' %}
+          {% for r in updated_history_rows %}
           <tr>
             <td>{{ r.email }}</td>
             <td>{{ r|get_item:"first name" }}</td>

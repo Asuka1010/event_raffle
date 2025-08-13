@@ -75,7 +75,7 @@
                 </tr>
               </thead>
               <tbody>
-                {% for r in historical_rows|slice:':50' %}
+                {% for r in historical_rows %}
                 <tr>
                   <td>{{ r.email }}</td>
                   <td>{{ r|get_item:"first name" }}</td>
