@@ -191,29 +191,37 @@ def results_view(request: HttpRequest) -> HttpResponse:
     event_name = request.session.get(SESSION_KEYS["event_name"]) or ""
     event_capacity = int(request.session.get(SESSION_KEYS["event_capacity"]) or 0)
     event_date = request.session.get(SESSION_KEYS["event_date"]) or ""
-    # Ensure updated historical database is computed and stored
+    # Compute updated historical database preview (do not persist until confirmed)
     master = request.session.get(SESSION_KEYS["master"]) or []
     adjustments = request.session.get("raffle_adjustments") or {}
 
     updated_csv = generate_updated_history_csv(master, selected, event_name, adjustments)
-    request.session[SESSION_KEYS["updated_history_csv"]] = updated_csv
-    # Persist per user
-    HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": updated_csv})
-    # Persist raffle run for history listing
-    try:
-        selected_csv = _to_csv(selected)
-        eligible_csv = generate_ranking_csv(eligible)
-        RaffleRun.objects.create(
-            user=request.user,
-            name=event_name,
-            date=datetime.fromisoformat(event_date).date() if event_date else None,
-            capacity=event_capacity,
-            signup_csv_text=_to_csv(request.session.get(SESSION_KEYS["signups"]) or []),
-            selected_csv_text=selected_csv,
-            eligible_csv_text=eligible_csv,
-        )
-    except Exception:
-        pass
+    updated_rows = parse_csv_upload(io.BytesIO(updated_csv.encode("utf-8")))
+
+    if request.method == "POST":
+        action = request.POST.get("action") or ""
+        if action == "save":
+            # Persist per user and record raffle run
+            HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": updated_csv})
+            request.session[SESSION_KEYS["historical"]] = updated_rows
+            try:
+                selected_csv = _to_csv(selected)
+                eligible_csv = generate_ranking_csv(eligible)
+                RaffleRun.objects.create(
+                    user=request.user,
+                    name=event_name,
+                    date=datetime.fromisoformat(event_date).date() if event_date else None,
+                    capacity=event_capacity,
+                    signup_csv_text=_to_csv(request.session.get(SESSION_KEYS["signups"]) or []),
+                    selected_csv_text=selected_csv,
+                    eligible_csv_text=eligible_csv,
+                )
+            except Exception:
+                pass
+            return redirect("raffle:upload")
+        else:
+            # Cancel -> do not persist
+            return redirect("raffle:upload")
     ctx = {
         "eligible_count": len(eligible),
         "selected_count": len(selected),
@@ -221,6 +229,7 @@ def results_view(request: HttpRequest) -> HttpResponse:
         "event_capacity": event_capacity,
         "event_date": event_date,
         "selected": selected,
+        "updated_history_rows": updated_rows,
     }
     return render(request, "raffle/results.html", ctx)
 
