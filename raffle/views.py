@@ -47,6 +47,25 @@ def upload_view(request: HttpRequest) -> HttpResponse:
     except Exception:
         historical_rows = []
 
+    # Provide events list and latest selection dates per email
+    runs = RaffleRun.objects.filter(user=request.user).order_by("-date", "-created_at")
+    email_to_latest_date = {}
+    for run in runs:
+        if not run.selected_csv_text:
+            continue
+        for row in parse_csv_upload(io.BytesIO(run.selected_csv_text.encode("utf-8"))):
+            email = (row.get("email") or "").lower()
+            if not email:
+                continue
+            d = run.date
+            if d and (email not in email_to_latest_date or email_to_latest_date[email] < str(d)):
+                email_to_latest_date[email] = str(d)
+
+    # Sorting and filtering parameters
+    sort_key = (request.GET.get("sort") or "").lower()
+    direction = (request.GET.get("direction") or "asc").lower()
+    focus_run_id = request.GET.get("event")
+
     if request.method == "POST":
         form = UploadForm(request.POST, request.FILES)
         if form.is_valid():
@@ -70,7 +89,43 @@ def upload_view(request: HttpRequest) -> HttpResponse:
             return redirect("raffle:config")
     else:
         form = UploadForm()
-    return render(request, "raffle/upload.html", {"form": form, "historical_rows": historical_rows})
+    # Apply filtering by event (selected students in that run)
+    if focus_run_id:
+        try:
+            run = RaffleRun.objects.get(user=request.user, id=int(focus_run_id))
+            selected_rows = parse_csv_upload(io.BytesIO((run.selected_csv_text or "").encode("utf-8")))
+            selected_emails = { (r.get("email") or "").lower() for r in selected_rows }
+            historical_rows = [r for r in historical_rows if (r.get("email") or "").lower() in selected_emails]
+        except Exception:
+            pass
+
+    # Sort
+    def sort_value(r, key):
+        try:
+            return int(r.get(key) or 0)
+        except Exception:
+            return 0
+
+    if sort_key in {"attended", "absent", "late"}:
+        historical_rows = sorted(historical_rows, key=lambda r: sort_value(r, sort_key), reverse=(direction=="desc"))
+
+    # Annotate latest date
+    for r in historical_rows:
+        email = (r.get("email") or "").lower()
+        r["latest_date"] = email_to_latest_date.get(email, "")
+
+    return render(
+        request,
+        "raffle/upload.html",
+        {
+            "form": form,
+            "historical_rows": historical_rows,
+            "runs": runs,
+            "sort": sort_key,
+            "direction": direction,
+            "focus_run_id": focus_run_id,
+        },
+    )
 
 
 @login_required

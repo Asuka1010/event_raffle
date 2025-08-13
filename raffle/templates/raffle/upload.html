@@ -4,7 +4,7 @@
 {% block content %}
 <div class="header">
   <h1>Student Event Management System</h1>
-  <p>Upload CSV files to manage event sign-ups and student attendance</p>
+  <p>Upload sign-ups, manage events, and maintain historical attendance</p>
   </div>
 
 <form method="post" enctype="multipart/form-data">
@@ -18,6 +18,9 @@
       <div class="card-content">
         {{ form.signup_csv.label_tag }}
         {{ form.signup_csv }}
+        <div class="button-container" style="justify-content:flex-start; margin-top:12px;">
+          <button class="btn btn-primary" type="submit">Add event</button>
+        </div>
       </div>
     </div>
 
@@ -39,10 +42,31 @@
       <div class="card">
         <div class="card-header">
           <h3>🗄️ Historical Database Loaded</h3>
-          <p>Using the saved historical database from your previous run.</p>
+          <p>Using your saved historical database. You can filter and sort.</p>
         </div>
         <div class="card-content">
-          <div class="help-text">You can proceed with new event sign-ups. The historical database will be updated after selection.</div>
+          <form method="get" style="margin-bottom: 12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <label>Focus event:</label>
+            <select name="event">
+              <option value="">All</option>
+              {% for run in runs %}
+              <option value="{{ run.id }}" {% if focus_run_id == run.id|stringformat:'s' %}selected{% endif %}>{{ run.name }} ({{ run.date|default:'—' }})</option>
+              {% endfor %}
+            </select>
+            <label>Sort by:</label>
+            <select name="sort">
+              <option value="">None</option>
+              <option value="attended" {% if sort=='attended' %}selected{% endif %}>Attended</option>
+              <option value="absent" {% if sort=='absent' %}selected{% endif %}>Absent</option>
+              <option value="late" {% if sort=='late' %}selected{% endif %}>Late</option>
+            </select>
+            <select name="direction">
+              <option value="asc" {% if direction=='asc' %}selected{% endif %}>Ascending</option>
+              <option value="desc" {% if direction=='desc' %}selected{% endif %}>Descending</option>
+            </select>
+            <button class="btn btn-secondary" type="submit">Apply</button>
+          </form>
+          <div class="help-text">The table shows the latest attendance date per student alongside historical stats.</div>
           {% if historical_rows %}
           <div class="table-container" style="margin-top:16px; max-height: 300px; overflow: auto;">
             <table>
@@ -55,7 +79,8 @@
                   <th>Attended</th>
                   <th>Absent</th>
                   <th>Late</th>
-                  <th>Latest</th>
+                  <th>Latest (Date)</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -68,7 +93,8 @@
                   <td>{{ r.attended }}</td>
                   <td>{{ r.absent }}</td>
                   <td>{{ r.late }}</td>
-                  <td>{{ r|get_item:"latest attended" }}</td>
+                  <td>{{ r.latest_date|default:'—' }}</td>
+                  <td><a class="btn btn-secondary" href="{% url 'raffle:edit_historical' %}">Edit</a></td>
                 </tr>
                 {% endfor %}
               </tbody>
