@@ -210,12 +210,109 @@ def event_detail_view(request: HttpRequest, run_id: int) -> HttpResponse:
 def edit_historical_view(request: HttpRequest) -> HttpResponse:
     hd = HistoricalData.objects.filter(user=request.user).first()
     if request.method == "POST":
-        csv_text = request.POST.get("csv_text") or ""
+        try:
+            row_count = int(request.POST.get("row_count") or 0)
+        except Exception:
+            row_count = 0
+        preserved_events = request.session.get("raffle_edit_rows_events") or []
+        max_event_cols = int(request.session.get("raffle_edit_max_event_cols") or 0)
+
+        # Rebuild rows from POST + preserved event columns
+        rebuilt = []
+        for idx in range(row_count):
+            email = (request.POST.get(f"email_{idx}") or "").strip()
+            first_name = (request.POST.get(f"first_name_{idx}") or "").strip()
+            last_name = (request.POST.get(f"last_name_{idx}") or "").strip()
+            student_class = (request.POST.get(f"class_{idx}") or "").strip()
+            attended = request.POST.get(f"attended_{idx}") or "0"
+            absent = request.POST.get(f"absent_{idx}") or "0"
+            late = request.POST.get(f"late_{idx}") or "0"
+            latest_attended = (request.POST.get(f"latest_attended_{idx}") or "").strip()
+            events_attended_str = (request.POST.get(f"events_attended_{idx}") or "").strip()
+            events_cols = preserved_events[idx] if idx < len(preserved_events) else {}
+            rebuilt.append(
+                {
+                    "email": email,
+                    "first name": first_name,
+                    "last name": last_name,
+                    "class": student_class,
+                    "attended": attended,
+                    "absent": absent,
+                    "late": late,
+                    "latest attended": latest_attended,
+                    "attended events": events_attended_str,
+                    "_events_columns": events_cols,
+                }
+            )
+
+        # Write CSV in historical format, preserving event columns
+        headers = ["email", "First Name", "Last Name", "Class"]
+        for i in range(1, max_event_cols + 1):
+            headers.append(f"Event{i}")
+        headers.extend(["Absent", "Late", "Attended", "Attended Events", "Latest Attended"])
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(headers)
+        for r in rebuilt:
+            row = [
+                r.get("email") or "",
+                r.get("first name") or "",
+                r.get("last name") or "",
+                r.get("class") or "",
+            ]
+            events_cols = r.get("_events_columns") or {}
+            for i in range(1, max_event_cols + 1):
+                row.append(events_cols.get(f"event{i}") or "")
+            row.extend([
+                r.get("absent") or 0,
+                r.get("late") or 0,
+                r.get("attended") or 0,
+                r.get("attended events") or "",
+                r.get("latest attended") or "",
+            ])
+            writer.writerow(row)
+        csv_text = output.getvalue()
+
         HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": csv_text})
         request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.BytesIO(csv_text.encode("utf-8"))) if csv_text else []
         return redirect("raffle:upload")
-    csv_text = hd.csv_text if hd else ""
-    return render(request, "raffle/edit_historical.html", {"csv_text": csv_text})
+
+    # GET: build editable rows from current historical
+    rows = []
+    if hd and hd.csv_text:
+        rows = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
+    # Prepare rows with preserved event columns
+    editable_rows = []
+    preserved_events = []
+    max_event_cols = 0
+    for r in rows:
+        events_cols = {k: r.get(k) for k in r.keys() if str(k).startswith("event")}
+        count_events = len(events_cols)
+        max_event_cols = max(max_event_cols, count_events)
+        editable_rows.append(
+            {
+                "email": r.get("email") or "",
+                "first_name": r.get("first name") or "",
+                "last_name": r.get("last name") or "",
+                "class": r.get("class") or "",
+                "attended": r.get("attended") or 0,
+                "absent": r.get("absent") or 0,
+                "late": r.get("late") or 0,
+                "latest_attended": r.get("latest attended") or "",
+                "events_attended": r.get("attended events") or "",
+            }
+        )
+        preserved_events.append(events_cols)
+
+    request.session["raffle_edit_rows_events"] = preserved_events
+    request.session["raffle_edit_max_event_cols"] = max_event_cols
+
+    return render(
+        request,
+        "raffle/edit_historical.html",
+        {"rows": editable_rows, "row_count": len(editable_rows)},
+    )
 
 
 @login_required
