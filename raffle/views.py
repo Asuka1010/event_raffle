@@ -439,14 +439,138 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def settings_view(request: HttpRequest) -> HttpResponse:
+    # Prepare historical rows for editing
+    hd = HistoricalData.objects.filter(user=request.user).first()
+    rows = []
+    if hd and hd.csv_text:
+        rows = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
+    editable_rows = []
+    preserved_events = []
+    max_event_cols = 0
+    for r in rows:
+        events_cols = {k: r.get(k) for k in r.keys() if str(k).startswith("event")}
+        count_events = len(events_cols)
+        max_event_cols = max(max_event_cols, count_events)
+        editable_rows.append(
+            {
+                "email": r.get("email") or "",
+                "first_name": r.get("first name") or "",
+                "last_name": r.get("last name") or "",
+                "class": r.get("class") or "",
+                "attended": r.get("attended") or 0,
+                "absent": r.get("absent") or 0,
+                "late": r.get("late") or 0,
+                "latest_attended": r.get("latest attended") or "",
+                "events_attended": r.get("attended events") or "",
+            }
+        )
+        preserved_events.append(events_cols)
+
+    request.session["raffle_edit_rows_events"] = preserved_events
+    request.session["raffle_edit_max_event_cols"] = max_event_cols
+
     if request.method == "POST":
-        form = UserSettingsForm(request.POST, instance=request.user)
-        if form.is_valid():
-            form.save()
-            return redirect("raffle:upload")
-    else:
-        form = UserSettingsForm(instance=request.user)
-    return render(request, "raffle/settings.html", {"form": form})
+        form_type = request.POST.get("form_type") or "profile"
+        if form_type == "profile":
+            form = UserSettingsForm(request.POST, instance=request.user)
+            if form.is_valid():
+                form.save()
+                return redirect("raffle:settings")
+        else:  # historical
+            try:
+                row_count = int(request.POST.get("row_count") or 0)
+            except Exception:
+                row_count = 0
+            preserved_events = request.session.get("raffle_edit_rows_events") or []
+            max_event_cols = int(request.session.get("raffle_edit_max_event_cols") or 0)
+
+            # Rebuild from POST
+            rebuilt = []
+            for idx in range(row_count):
+                if request.POST.get(f"delete_{idx}"):
+                    continue
+                email = (request.POST.get(f"email_{idx}") or "").strip()
+                first_name = (request.POST.get(f"first_name_{idx}") or "").strip()
+                last_name = (request.POST.get(f"last_name_{idx}") or "").strip()
+                student_class = (request.POST.get(f"class_{idx}") or "").strip()
+                attended = request.POST.get(f"attended_{idx}") or "0"
+                absent = request.POST.get(f"absent_{idx}") or "0"
+                late = request.POST.get(f"late_{idx}") or "0"
+                latest_attended = (request.POST.get(f"latest_attended_{idx}") or "").strip()
+                events_attended_str = (request.POST.get(f"events_attended_{idx}") or "").strip()
+                events_cols = preserved_events[idx] if idx < len(preserved_events) else {}
+                rebuilt.append(
+                    {
+                        "email": email,
+                        "first name": first_name,
+                        "last name": last_name,
+                        "class": student_class,
+                        "attended": attended,
+                        "absent": absent,
+                        "late": late,
+                        "latest attended": latest_attended,
+                        "attended events": events_attended_str,
+                        "_events_columns": events_cols,
+                    }
+                )
+
+            # Optional add new row
+            add_email = (request.POST.get("add_email") or "").strip()
+            if add_email:
+                rebuilt.append(
+                    {
+                        "email": add_email,
+                        "first name": (request.POST.get("add_first_name") or "").strip(),
+                        "last name": (request.POST.get("add_last_name") or "").strip(),
+                        "class": (request.POST.get("add_class") or "").strip(),
+                        "attended": (request.POST.get("add_attended") or "0").strip(),
+                        "absent": (request.POST.get("add_absent") or "0").strip(),
+                        "late": (request.POST.get("add_late") or "0").strip(),
+                        "latest attended": (request.POST.get("add_latest_attended") or "").strip(),
+                        "attended events": (request.POST.get("add_events_attended") or "").strip(),
+                        "_events_columns": {},
+                    }
+                )
+
+            # Write CSV preserving EventN columns
+            headers = ["email", "First Name", "Last Name", "Class"]
+            for i in range(1, max_event_cols + 1):
+                headers.append(f"Event{i}")
+            headers.extend(["Absent", "Late", "Attended", "Attended Events", "Latest Attended"])
+
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(headers)
+            for r in rebuilt:
+                row = [
+                    r.get("email") or "",
+                    r.get("first name") or "",
+                    r.get("last name") or "",
+                    r.get("class") or "",
+                ]
+                events_cols = r.get("_events_columns") or {}
+                for i in range(1, max_event_cols + 1):
+                    row.append(events_cols.get(f"event{i}") or "")
+                row.extend([
+                    r.get("absent") or 0,
+                    r.get("late") or 0,
+                    r.get("attended") or 0,
+                    r.get("attended events") or "",
+                    r.get("latest attended") or "",
+                ])
+                writer.writerow(row)
+            csv_text = output.getvalue()
+
+            HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": csv_text})
+            request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.BytesIO(csv_text.encode("utf-8"))) if csv_text else []
+            return redirect("raffle:settings")
+
+    form = UserSettingsForm(instance=request.user)
+    return render(
+        request,
+        "raffle/settings.html",
+        {"form": form, "rows": editable_rows, "row_count": len(editable_rows)},
+    )
 
 
 # Helpers

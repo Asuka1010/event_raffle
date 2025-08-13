@@ -9,12 +9,79 @@
 <div class="card">
   <div class="card-content">
     <form method="post">
+      <input type="hidden" name="form_type" value="profile" />
       {% csrf_token %}
       <div class="form-group">{{ form.first_name.label_tag }}{{ form.first_name }}</div>
       <div class="form-group">{{ form.last_name.label_tag }}{{ form.last_name }}</div>
       <div class="button-container">
         <button class="btn btn-primary" type="submit">Save</button>
         <a class="btn btn-secondary" href="{% url 'raffle:upload' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="header" style="margin-top:24px;">
+  <h1>Historical Database</h1>
+  <p>Create, edit, and delete students</p>
+</div>
+
+<div class="card">
+  <div class="card-content">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="historical" />
+      <input type="hidden" name="row_count" value="{{ row_count }}" />
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>First</th>
+              <th>Last</th>
+              <th>Class</th>
+              <th>Attended</th>
+              <th>Absent</th>
+              <th>Late</th>
+              <th>Latest Attended</th>
+              <th>Events Attended</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td><input type="email" name="email_{{ forloop.counter0 }}" value="{{ r.email }}" /></td>
+              <td><input type="text" name="first_name_{{ forloop.counter0 }}" value="{{ r.first_name }}" /></td>
+              <td><input type="text" name="last_name_{{ forloop.counter0 }}" value="{{ r.last_name }}" /></td>
+              <td><input type="text" name="class_{{ forloop.counter0 }}" value="{{ r.class }}" /></td>
+              <td><input type="number" name="attended_{{ forloop.counter0 }}" value="{{ r.attended }}" min="0" /></td>
+              <td><input type="number" name="absent_{{ forloop.counter0 }}" value="{{ r.absent }}" min="0" /></td>
+              <td><input type="number" name="late_{{ forloop.counter0 }}" value="{{ r.late }}" min="0" /></td>
+              <td><input type="text" name="latest_attended_{{ forloop.counter0 }}" value="{{ r.latest_attended }}" /></td>
+              <td><input type="text" name="events_attended_{{ forloop.counter0 }}" value="{{ r.events_attended }}" /></td>
+              <td><input type="checkbox" name="delete_{{ forloop.counter0 }}" /></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10">No historical data yet.</td></tr>
+            {% endfor %}
+            <tr>
+              <td><input type="email" name="add_email" /></td>
+              <td><input type="text" name="add_first_name" /></td>
+              <td><input type="text" name="add_last_name" /></td>
+              <td><input type="text" name="add_class" /></td>
+              <td><input type="number" name="add_attended" min="0" value="0" /></td>
+              <td><input type="number" name="add_absent" min="0" value="0" /></td>
+              <td><input type="number" name="add_late" min="0" value="0" /></td>
+              <td><input type="text" name="add_latest_attended" /></td>
+              <td><input type="text" name="add_events_attended" /></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="button-container" style="margin-top: 16px;">
+        <button class="btn btn-primary" type="submit">Save historical</button>
       </div>
     </form>
   </div>
