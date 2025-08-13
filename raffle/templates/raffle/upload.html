@@ -24,6 +24,9 @@
           <div class="help-text">
             Format: email, First Name, Last Name, Class, Event1..EventN, Absent, Late, Attended, Attended Events, Latest Attended
           </div>
+          <div class="button-container" style="justify-content:flex-start; margin-top:12px;">
+            <button class="btn btn-primary" type="submit">Save historical</button>
+          </div>
         </div>
       </div>
     {% else %}
@@ -93,9 +96,7 @@
     {% endif %}
   </div>
 
-  <div class="button-container">
-    <button type="submit" class="btn btn-primary">Continue to Event Configuration</button>
-  </div>
+  
 </form>
 {% endblock %}
 
