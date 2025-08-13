@@ -1,4 +1,5 @@
 {% extends 'raffle/base.html' %}
+{% load raffle_extras %}
 {% block title %}Results Dashboard | Raffle{% endblock %}
 {% block content %}
 <div class="header">
@@ -101,13 +102,13 @@
           {% for r in updated_history_rows|slice:':100' %}
           <tr>
             <td>{{ r.email }}</td>
-            <td>{{ r."first name" }}</td>
-            <td>{{ r."last name" }}</td>
+            <td>{{ r|get_item:"first name" }}</td>
+            <td>{{ r|get_item:"last name" }}</td>
             <td>{{ r.class }}</td>
             <td>{{ r.attended }}</td>
             <td>{{ r.absent }}</td>
             <td>{{ r.late }}</td>
-            <td>{{ r."latest attended" }}</td>
+            <td>{{ r|get_item:"latest attended" }}</td>
           </tr>
           {% endfor %}
         </tbody>
