@@ -33,7 +33,7 @@
           <p>Using your saved historical database. You can filter and sort.</p>
         </div>
         <div class="card-content">
-          <form method="get" style="margin-bottom: 12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <form method="get" action="" style="margin-bottom: 12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <label>Focus event:</label>
             <select name="event">
               <option value="">All</option>
@@ -53,6 +53,7 @@
               <option value="desc" {% if direction == 'desc' %}selected{% endif %}>Descending</option>
             </select>
             <button class="btn btn-secondary" type="submit">Apply</button>
+            <a class="btn btn-primary" href="{% url 'raffle:config' %}">Add new event</a>
           </form>
           <div class="help-text">The table shows the latest attendance date per student alongside historical stats.</div>
           {% if historical_rows %}

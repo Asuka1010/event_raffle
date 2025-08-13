@@ -73,7 +73,8 @@ def upload_view(request: HttpRequest) -> HttpResponse:
                 historical = parse_csv_upload(form.cleaned_data["historical_csv"])
                 request.session[SESSION_KEYS["historical"]] = historical
                 HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": _to_csv(historical)})
-            return redirect("raffle:config")
+            # Stay on page after saving historical; do not jump to config here
+            return redirect("raffle:upload")
     else:
         form = UploadForm()
     # Apply filtering by event (selected students in that run)
@@ -117,9 +118,7 @@ def upload_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def config_view(request: HttpRequest) -> HttpResponse:
-    if SESSION_KEYS["master"] not in request.session:
-        # master will be computed here from uploaded signups
-        pass
+    # master will be computed here from uploaded signups when form is valid
     if request.method == "POST":
         form = ConfigForm(request.POST, request.FILES)
         if form.is_valid():
@@ -136,7 +135,7 @@ def config_view(request: HttpRequest) -> HttpResponse:
             master = consolidate_students(signups, persisted_historical)
             request.session[SESSION_KEYS["signups"]] = signups
             request.session[SESSION_KEYS["master"]] = _serialize_for_session(master)
-            return redirect("raffle:database")
+            return redirect("raffle:selection")
     else:
         form = ConfigForm()
     return render(request, "raffle/config.html", {"form": form})
