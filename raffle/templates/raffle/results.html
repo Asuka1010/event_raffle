@@ -118,6 +118,29 @@
 </div>
 {% endif %}
 
+{% if missing_selected %}
+<div class="card">
+  <div class="card-header"><h3>Not Found In Historical</h3></div>
+  <div class="card-content">
+    <div class="table-container">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Class</th></tr></thead>
+        <tbody>
+          {% for s in missing_selected %}
+          <tr>
+            <td>{{ s.name }}</td>
+            <td>{{ s.email }}</td>
+            <td>{{ s.class }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="help-text" style="margin-top:8px;">These selected participants were not found in your historical database (matched by email) and were not added. Please add them in Settings if needed.</p>
+  </div>
+</div>
+{% endif %}
+
 <form method="post" style="margin-top: 16px;">
   {% csrf_token %}
   <div class="button-container">

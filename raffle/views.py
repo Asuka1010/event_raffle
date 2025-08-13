@@ -192,11 +192,20 @@ def results_view(request: HttpRequest) -> HttpResponse:
     event_capacity = int(request.session.get(SESSION_KEYS["event_capacity"]) or 0)
     event_date = request.session.get(SESSION_KEYS["event_date"]) or ""
     # Compute updated historical database preview (do not persist until confirmed)
-    master = request.session.get(SESSION_KEYS["master"]) or []
+    # Use the actual historical database as the base for updates
+    base_historical = request.session.get(SESSION_KEYS["historical"]) or []
+    if not base_historical:
+        hd = HistoricalData.objects.filter(user=request.user).first()
+        if hd and hd.csv_text:
+            base_historical = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
     adjustments = request.session.get("raffle_adjustments") or {}
 
-    updated_csv = generate_updated_history_csv(master, selected, event_name, adjustments, event_date)
+    updated_csv = generate_updated_history_csv(base_historical, selected, event_name, adjustments, event_date)
     updated_rows = parse_csv_upload(io.BytesIO(updated_csv.encode("utf-8")))
+
+    # Identify selected participants not present in historical (by email)
+    base_emails = { (r.get("email") or "").lower() for r in base_historical }
+    missing_selected = [s for s in selected if (s.get("email") or "").lower() not in base_emails]
 
     if request.method == "POST":
         action = request.POST.get("action") or ""
@@ -230,6 +239,7 @@ def results_view(request: HttpRequest) -> HttpResponse:
         "event_date": event_date,
         "selected": selected,
         "updated_history_rows": updated_rows,
+        "missing_selected": missing_selected,
     }
     return render(request, "raffle/results.html", ctx)
 
