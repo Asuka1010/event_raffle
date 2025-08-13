@@ -1,0 +1,42 @@
+{% extends 'raffle/base.html' %}
+{% block title %}Event Configuration | Raffle{% endblock %}
+{% block content %}
+<div class="header">
+  <h1>Event Configuration</h1>
+  <p>Configure the details for your event</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>📅 Event Details</h3>
+    <p>Enter the name and capacity for your event</p>
+  </div>
+  <div class="card-content">
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        {{ form.event_name.label_tag }}
+        {{ form.event_name }}
+      </div>
+      <div class="form-group">
+        {{ form.event_capacity.label_tag }}
+        <div class="input-with-icon">
+          <span class="icon">👥</span>
+          {{ form.event_capacity }}
+        </div>
+        <div class="help-text">Maximum number of students that can attend this event</div>
+      </div>
+      <div class="form-group">
+        {{ form.event_date.label_tag }}
+        {{ form.event_date }}
+      </div>
+      <div class="button-container">
+        <a href="{% url 'raffle:upload' %}" class="btn btn-secondary">Back to File Upload</a>
+        <button type="submit" class="btn btn-primary">Proceed</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,29 @@
+{% extends 'raffle/base.html' %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<div class="header">
+  <h1>Create an account</h1>
+  <p>Register to manage raffles and historical databases</p>
+</div>
+
+<div class="card">
+  <div class="card-content">
+    <form method="post">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="form-group">{{ form.username.label_tag }}{{ form.username }}</div>
+      <div class="form-group">{{ form.email.label_tag }}{{ form.email }}</div>
+      <div class="form-group">{{ form.first_name.label_tag }}{{ form.first_name }}</div>
+      <div class="form-group">{{ form.last_name.label_tag }}{{ form.last_name }}</div>
+      <div class="form-group">{{ form.password1.label_tag }}{{ form.password1 }}</div>
+      <div class="form-group">{{ form.password2.label_tag }}{{ form.password2 }}</div>
+      <div class="button-container">
+        <button type="submit" class="btn btn-primary">Register</button>
+        <a href="{% url 'raffle:login' %}" class="btn btn-secondary">Already have an account? Log in</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+

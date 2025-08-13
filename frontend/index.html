@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Event Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Upload Step -->
+        <div id="upload-step" class="step active">
+            <div class="container">
+                <div class="header">
+                    <h1>Student Event Management System</h1>
+                    <p>Upload CSV files to manage event sign-ups and student attendance</p>
+                </div>
+
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📤 Event Sign-ups</h3>
+                            <p>Upload the CSV file containing student sign-ups for the new event</p>
+                        </div>
+                        <div class="card-content">
+                            <label for="signup-file">Sign-up CSV File</label>
+                            <input type="file" id="signup-file" accept=".csv" class="file-input">
+                            <div id="signup-status" class="file-status"></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🗄️ Historical Database</h3>
+                            <p>Upload your existing student database (optional if database exists)</p>
+                        </div>
+                        <div class="card-content">
+                            <label for="historical-file">Historical Database CSV</label>
+                            <input type="file" id="historical-file" accept=".csv" class="file-input">
+                            <div id="historical-status" class="file-status"></div>
+                            <div class="help-text">
+                                Required columns: user_id, email, name, class, num_absences, num_late_arrivals, num_events_attended, events_attended, last_attended_date
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="upload-alert" class="alert hidden"></div>
+
+                <div class="button-container">
+                    <button id="proceed-config" class="btn btn-primary" disabled>Continue to Event Configuration</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Step -->
+        <div id="config-step" class="step">
+            <div class="container">
+                <div class="header">
+                    <h1>Event Configuration</h1>
+                    <p>Configure the details for your event</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📅 Event Details</h3>
+                        <p>Enter the name and capacity for your event</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label for="event-name">Event Name</label>
+                            <input type="text" id="event-name" placeholder="e.g., Tech Talk, Workshop, Networking Event">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="event-capacity">Event Capacity</label>
+                            <div class="input-with-icon">
+                                <span class="icon">👥</span>
+                                <input type="number" id="event-capacity" placeholder="e.g., 50" min="1">
+                            </div>
+                            <div class="help-text">Maximum number of students that can attend this event</div>
+                        </div>
+
+                        <div id="config-error" class="alert alert-error hidden"></div>
+                    </div>
+                </div>
+
+                <div class="button-container">
+                    <button id="back-upload" class="btn btn-secondary">Back to File Upload</button>
+                    <button id="process-selection" class="btn btn-primary">Process Event Selection</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database View Step -->
+        <div id="database-step" class="step">
+            <div class="container">
+                <div class="header">
+                    <h1>Student Database</h1>
+                    <p id="database-info">Review student attendance history</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>👁️ Current Student Database</h3>
+                        <p>Review student attendance history</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="search-container">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="search-students" placeholder="Search by name, email, or class...">
+                        </div>
+
+                        <div class="table-container">
+                            <table id="students-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Class</th>
+                                        <th>Response</th>
+                                        <th>Events Attended</th>
+                                        <th>Absences</th>
+                                        <th>Late Arrivals</th>
+                                        <th>Last Attended</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-container">
+                    <button id="proceed-selection" class="btn btn-primary">Proceed to Attendee Selection</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selection Step -->
+        <div id="selection-step" class="step">
+            <div class="container">
+                <div class="header">
+                    <h1>Attendee Selection</h1>
+                    <p id="selection-info">Event selection process</p>
+                </div>
+
+                <div id="selection-ready" class="card">
+                    <div class="card-header">
+                        <h3>Ready to Select Attendees</h3>
+                        <p>Click the button below to run the selection algorithm</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="selection-criteria">
+                            <p>Selection criteria:</p>
+                            <ul>
+                                <li>Students who responded "yes"</li>
+                                <li>Random selection for fairness</li>
+                                <li>First-come, first-served basis</li>
+                            </ul>
+                        </div>
+                        <button id="run-selection" class="btn btn-primary">Run Attendee Selection</button>
+                    </div>
+                </div>
+
+                <div id="selection-results" class="cards-grid hidden">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>✅ Selected Attendees</h3>
+                            <p id="selected-count">Students selected for the event</p>
+                        </div>
+                        <div class="card-content">
+                            <div id="selected-list" class="attendee-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>👁️ All Eligible Students</h3>
+                            <p>All students who responded "yes"</p>
+                        </div>
+                        <div class="card-content">
+                            <div id="eligible-list" class="attendee-list"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="selection-complete" class="button-container hidden">
+                    <button id="generate-results" class="btn btn-primary">Generate Results Report</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Step -->
+        <div id="results-step" class="step">
+            <div class="container">
+                <div class="header">
+                    <h1>Results Dashboard</h1>
+                    <p>Event selection completed successfully</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <div id="total-signups" class="stat-number">0</div>
+                            <div class="stat-label">Total Sign-ups</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <div id="eligible-count" class="stat-number">0</div>
+                            <div class="stat-label">Eligible Students</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <div id="selected-final-count" class="stat-number">0</div>
+                            <div class="stat-label">Selected</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-content">
+                            <div id="selection-rate" class="stat-number">0%</div>
+                            <div class="stat-label">Selection Rate</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📄 Event Summary</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="summary-grid">
+                            <div>
+                                <p><strong>Event Name:</strong> <span id="summary-event-name"></span></p>
+                                <p><strong>Event Capacity:</strong> <span id="summary-capacity"></span></p>
+                                <p><strong>Selection Date:</strong> <span id="summary-date"></span></p>
+                                <p><strong>Total Applications:</strong> <span id="summary-total"></span></p>
+                            </div>
+                            <div>
+                                <p><strong>Eligible Applicants:</strong> <span id="summary-eligible"></span></p>
+                                <p><strong>Selected Attendees:</strong> <span id="summary-selected"></span></p>
+                                <p><strong>Waitlisted:</strong> <span id="summary-waitlisted"></span></p>
+                                <p><strong>Selection Method:</strong> Random selection</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>⬇️ Download Reports</h3>
+                        <p>Export your results and updated database</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="download-buttons">
+                            <button id="download-selected" class="btn btn-primary">⬇️ Selected Attendees</button>
+                            <button id="download-ranking" class="btn btn-secondary">⬇️ All Eligible Students</button>
+                            <button id="download-database" class="btn btn-secondary">⬇️ Updated Database</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Selected Attendees</h3>
+                        <p id="final-event-name">Final list of selected students</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="table-container">
+                            <table id="final-results-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Class</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-container">
+                    <button id="reset-app" class="btn btn-secondary">Process Another Event</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

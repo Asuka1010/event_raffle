@@ -1,0 +1,24 @@
+{% extends 'raffle/base.html' %}
+{% block title %}Edit Historical Database{% endblock %}
+{% block content %}
+<div class="header">
+  <h1>Edit Historical Database</h1>
+  <p>Paste or modify the CSV below and save</p>
+  <div class="help-text">Format: email, First Name, Last Name, Class, Event1..EventN, Absent, Late, Attended, Attended Events, Latest Attended</div>
+</div>
+
+<div class="card">
+  <div class="card-content">
+    <form method="post">
+      {% csrf_token %}
+      <textarea name="csv_text" rows="16" style="width:100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{{ csv_text }}</textarea>
+      <div class="button-container" style="margin-top: 16px;">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <a class="btn btn-secondary" href="{% url 'raffle:upload' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+

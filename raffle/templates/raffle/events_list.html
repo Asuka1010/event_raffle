@@ -1,0 +1,39 @@
+{% extends 'raffle/base.html' %}
+{% block title %}Events{% endblock %}
+{% block content %}
+<div class="header">
+  <h1>Your Events</h1>
+  <p>Click an event to view its selected and eligible students</p>
+</div>
+
+<div class="card">
+  <div class="card-content">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Date</th>
+            <th>Capacity</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in runs %}
+          <tr>
+            <td><a href="{% url 'raffle:event_detail' run.id %}">{{ run.name }}</a></td>
+            <td>{{ run.date|default:'—' }}</td>
+            <td>{{ run.capacity }}</td>
+            <td>{{ run.created_at }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4">No events yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

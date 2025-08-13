@@ -1,0 +1,137 @@
+{% extends 'raffle/base.html' %}
+{% load raffle_extras %}
+{% block title %}Results Dashboard | Raffle{% endblock %}
+{% block content %}
+<div class="header">
+  <h1>Results Dashboard</h1>
+  <p>Event selection completed successfully</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon">📊</div>
+    <div class="stat-content">
+      <div id="total-signups" class="stat-number">{{ eligible_count }}</div>
+      <div class="stat-label">Eligible Students</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">✅</div>
+    <div class="stat-content">
+      <div id="selected-final-count" class="stat-number">{{ selected_count }}</div>
+      <div class="stat-label">Selected</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>📄 Event Summary</h3>
+  </div>
+  <div class="card-content">
+    <div class="summary-grid">
+      <div>
+        <p><strong>Event Name:</strong> <span id="summary-event-name">{{ event_name }}</span></p>
+        <p><strong>Event Capacity:</strong> <span id="summary-capacity">{{ event_capacity }}</span></p>
+        <p><strong>Event Date:</strong> <span id="summary-date">{{ event_date }}</span></p>
+      </div>
+      <div>
+        <p><strong>Eligible Applicants:</strong> <span id="summary-eligible">{{ eligible_count }}</span></p>
+        <p><strong>Selected Attendees:</strong> <span id="summary-selected">{{ selected_count }}</span></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Download buttons removed per UX requirement -->
+
+{% if request.session.raffle_updated_history_csv %}
+<div class="card">
+  <div class="card-header">
+    <h3>Updated Historical Database (Preview)</h3>
+  </div>
+  <div class="card-content">
+    <div class="table-container" style="max-height: 300px; overflow: auto;">
+      <pre style="white-space: pre;">{{ request.session.raffle_updated_history_csv }}</pre>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <h3>Selected Attendees</h3>
+    <p id="final-event-name">Final list of selected students</p>
+  </div>
+  <div class="card-content">
+    <div class="table-container">
+      <table id="final-results-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Class</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in selected %}
+          <tr>
+            <td>#{{ s.rank }}</td>
+            <td>{{ s.name }}</td>
+            <td>{{ s.email }}</td>
+            <td>{{ s.class }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if updated_history_rows %}
+<div class="card">
+  <div class="card-header">
+    <h3>Updated Historical Database</h3>
+  </div>
+  <div class="card-content">
+    <div class="table-container" style="max-height: 360px; overflow: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Class</th>
+            <th>Attended</th>
+            <th>Absent</th>
+            <th>Late</th>
+            <th>Latest</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in updated_history_rows|slice:':100' %}
+          <tr>
+            <td>{{ r.email }}</td>
+            <td>{{ r|get_item:"first name" }}</td>
+            <td>{{ r|get_item:"last name" }}</td>
+            <td>{{ r.class }}</td>
+            <td>{{ r.attended }}</td>
+            <td>{{ r.absent }}</td>
+            <td>{{ r.late }}</td>
+            <td>{{ r|get_item:"latest attended" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="button-container">
+  <a href="{% url 'raffle:upload' %}" class="btn btn-secondary">Process Another Event</a>
+</div>
+{% endblock %}
+
+

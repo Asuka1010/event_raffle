@@ -1,0 +1,65 @@
+{% extends 'raffle/base.html' %}
+{% block title %}Attendee Selection | Raffle{% endblock %}
+{% block content %}
+<div class="header">
+  <h1>Attendee Selection</h1>
+  <p>Event selection process</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Eligible Students</h3>
+    <p>Students who responded "yes". Selected attendees are highlighted.</p>
+  </div>
+  <div class="card-content">
+    <form method="post" action="{% url 'raffle:results' %}">
+      {% csrf_token %}
+      <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Class</th>
+            <th>Attended</th>
+            <th>Absences</th>
+            <th>Late</th>
+            <th>Latest</th>
+            <th>Selected</th>
+            <th>Mark Absent</th>
+            <th>Mark Late</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in eligible %}
+          <tr class="{% if s.selected %}selected{% endif %}">
+            <td>#{{ s.rank }}</td>
+            <td>{{ s.name }}</td>
+            <td>{{ s.email }}</td>
+            <td>{{ s.class }}</td>
+            <td>{{ s.num_events_attended }}</td>
+            <td>{{ s.num_absences }}</td>
+            <td>{{ s.num_late_arrivals }}</td>
+            <td>{{ s.latest_attended|default:'—' }}</td>
+            <td>{% if s.selected %}✅{% else %}❌{% endif %}</td>
+            <td>{% if s.selected %}<input type="checkbox" name="absent_{{ s.email }}">{% endif %}</td>
+            <td>{% if s.selected %}<input type="checkbox" name="late_{{ s.email }}">{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="button-container" style="margin-top:16px;">
+      <button type="submit" class="btn btn-primary">Result</button>
+    </div>
+    </form>
+  </div>
+</div>
+
+<div id="selection-complete" class="button-container">
+  <a href="{% url 'raffle:results' %}" class="btn btn-primary">Generate Results Report</a>
+</div>
+{% endblock %}
+
+

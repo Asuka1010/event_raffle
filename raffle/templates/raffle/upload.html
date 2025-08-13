@@ -1,0 +1,89 @@
+{% extends 'raffle/base.html' %}
+{% load raffle_extras %}
+{% block title %}Upload CSVs | Raffle{% endblock %}
+{% block content %}
+<div class="header">
+  <h1>Student Event Management System</h1>
+  <p>Upload CSV files to manage event sign-ups and student attendance</p>
+  </div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-header">
+        <h3>📤 Event Sign-ups</h3>
+        <p>Upload the CSV file containing student sign-ups for the new event</p>
+      </div>
+      <div class="card-content">
+        {{ form.signup_csv.label_tag }}
+        {{ form.signup_csv }}
+      </div>
+    </div>
+
+    {% if not request.session.raffle_historical %}
+      <div class="card">
+        <div class="card-header">
+          <h3>🗄️ Historical Database</h3>
+          <p>First time this term? Upload your existing student database</p>
+        </div>
+        <div class="card-content">
+          {{ form.historical_csv.label_tag }}
+          {{ form.historical_csv }}
+          <div class="help-text">
+            Format: email, First Name, Last Name, Class, Event1..EventN, Absent, Late, Attended, Attended Events, Latest Attended
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="card">
+        <div class="card-header">
+          <h3>🗄️ Historical Database Loaded</h3>
+          <p>Using the saved historical database from your previous run.</p>
+        </div>
+        <div class="card-content">
+          <div class="help-text">You can proceed with new event sign-ups. The historical database will be updated after selection.</div>
+          {% if historical_rows %}
+          <div class="table-container" style="margin-top:16px; max-height: 300px; overflow: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>First Name</th>
+                  <th>Last Name</th>
+                  <th>Class</th>
+                  <th>Attended</th>
+                  <th>Absent</th>
+                  <th>Late</th>
+                  <th>Latest</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in historical_rows|slice:':50' %}
+                <tr>
+                  <td>{{ r.email }}</td>
+                  <td>{{ r|get_item:"first name" }}</td>
+                  <td>{{ r|get_item:"last name" }}</td>
+                  <td>{{ r.class }}</td>
+                  <td>{{ r.attended }}</td>
+                  <td>{{ r.absent }}</td>
+                  <td>{{ r.late }}</td>
+                  <td>{{ r|get_item:"latest attended" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="button-container">
+    <button type="submit" class="btn btn-primary">Continue to Event Configuration</button>
+  </div>
+</form>
+{% endblock %}
+
+

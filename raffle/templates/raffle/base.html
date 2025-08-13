@@ -1,0 +1,30 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Student Event Management System{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'raffle/styles.css' %}" />
+  </head>
+  <body>
+    <div class="container">
+      <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 16px;">
+        <div><a href="{% url 'raffle:upload' %}" style="text-decoration:none; font-weight:600; color:#111827;">Raffle</a></div>
+        <div>
+          {% if request.user.is_authenticated %}
+            <span style="margin-right:12px; color:#6b7280;">{{ request.user.username }}</span>
+            <a class="btn btn-secondary" href="{% url 'raffle:events' %}" style="margin-right:8px;">Events</a>
+            <a class="btn btn-secondary" href="{% url 'raffle:edit_historical' %}" style="margin-right:8px;">Edit Historical</a>
+            <a class="btn btn-secondary" href="{% url 'raffle:logout' %}">Logout</a>
+          {% else %}
+            <a class="btn btn-secondary" href="{% url 'raffle:login' %}">Login</a>
+          {% endif %}
+        </div>
+      </div>
+      {% block content %}{% endblock %}
+    </div>
+  </body>
+  </html>
+
+
