@@ -12,8 +12,7 @@
     <p>Students who responded "yes". Selected attendees are highlighted.</p>
   </div>
   <div class="card-content">
-    <form method="post" action="{% url 'raffle:results' %}">
-      {% csrf_token %}
+    <form method="get" action="{% url 'raffle:results' %}">
       <div class="table-container">
       <table>
         <thead>
@@ -27,8 +26,7 @@
             <th>Late</th>
             <th>Latest</th>
             <th>Selected</th>
-            <th>Mark Absent</th>
-            <th>Mark Late</th>
+            
           </tr>
         </thead>
         <tbody>
@@ -43,8 +41,6 @@
             <td>{{ s.num_late_arrivals }}</td>
             <td>{{ s.latest_attended|default:'—' }}</td>
             <td>{% if s.selected %}✅{% else %}❌{% endif %}</td>
-            <td>{% if s.selected %}<input type="checkbox" name="absent_{{ s.email }}">{% endif %}</td>
-            <td>{% if s.selected %}<input type="checkbox" name="late_{{ s.email }}">{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

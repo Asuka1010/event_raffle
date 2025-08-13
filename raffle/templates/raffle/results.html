@@ -1,5 +1,4 @@
 {% extends 'raffle/base.html' %}
-{% load raffle_extras %}
 {% block title %}Results Dashboard | Raffle{% endblock %}
 {% block content %}
 <div class="header">
@@ -90,43 +89,7 @@
 </div>
 
 {% if updated_history_rows %}
-<div class="card">
-  <div class="card-header">
-    <h3>Updated Historical Database</h3>
-  </div>
-  <div class="card-content">
-    <div class="table-container" style="max-height: 360px; overflow: auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Class</th>
-            <th>Attended</th>
-            <th>Absent</th>
-            <th>Late</th>
-            <th>Latest</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in updated_history_rows|slice:':100' %}
-          <tr>
-            <td>{{ r.email }}</td>
-            <td>{{ r|get_item:"first name" }}</td>
-            <td>{{ r|get_item:"last name" }}</td>
-            <td>{{ r.class }}</td>
-            <td>{{ r.attended }}</td>
-            <td>{{ r.absent }}</td>
-            <td>{{ r.late }}</td>
-            <td>{{ r|get_item:"latest attended" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
+{# Historical DB preview removed as requested #}
 {% endif %}
 
 <div class="button-container">

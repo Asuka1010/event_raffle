@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
 
-from .forms import ConfigForm, UploadForm, RegistrationForm
+from .forms import ConfigForm, UploadForm, RegistrationForm, UserSettingsForm
 from .models import HistoricalData, RaffleRun
 from .services import (
     consolidate_students,
@@ -69,23 +69,10 @@ def upload_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = UploadForm(request.POST, request.FILES)
         if form.is_valid():
-            signups = parse_csv_upload(form.cleaned_data["signup_csv"])
-            # Load persisted historical for this user; fallback to session; otherwise from upload
-            persisted_historical = request.session.get(SESSION_KEYS["historical"]) or []
-            if not persisted_historical:
-                try:
-                    hd = HistoricalData.objects.filter(user=request.user).first()
-                    if hd and hd.csv_text:
-                        persisted_historical = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
-                except Exception:
-                    persisted_historical = []
-            historical = persisted_historical
-            if not persisted_historical and form.cleaned_data.get("historical_csv"):
+            if form.cleaned_data.get("historical_csv"):
                 historical = parse_csv_upload(form.cleaned_data["historical_csv"])
                 request.session[SESSION_KEYS["historical"]] = historical
-            master = consolidate_students(signups, historical)
-            request.session[SESSION_KEYS["signups"]] = signups
-            request.session[SESSION_KEYS["master"]] = _serialize_for_session(master)
+                HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": _to_csv(historical)})
             return redirect("raffle:config")
     else:
         form = UploadForm()
@@ -131,13 +118,24 @@ def upload_view(request: HttpRequest) -> HttpResponse:
 @login_required
 def config_view(request: HttpRequest) -> HttpResponse:
     if SESSION_KEYS["master"] not in request.session:
-        return redirect("raffle:upload")
+        # master will be computed here from uploaded signups
+        pass
     if request.method == "POST":
-        form = ConfigForm(request.POST)
+        form = ConfigForm(request.POST, request.FILES)
         if form.is_valid():
             request.session[SESSION_KEYS["event_name"]] = form.cleaned_data["event_name"]
             request.session[SESSION_KEYS["event_capacity"]] = int(form.cleaned_data["event_capacity"])
             request.session[SESSION_KEYS["event_date"]] = str(form.cleaned_data["event_date"])  # ISO
+            # Build master from uploaded signups and saved historical
+            signups = parse_csv_upload(form.cleaned_data["signup_csv"])
+            persisted_historical = request.session.get(SESSION_KEYS["historical"]) or []
+            if not persisted_historical:
+                hd = HistoricalData.objects.filter(user=request.user).first()
+                if hd and hd.csv_text:
+                    persisted_historical = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
+            master = consolidate_students(signups, persisted_historical)
+            request.session[SESSION_KEYS["signups"]] = signups
+            request.session[SESSION_KEYS["master"]] = _serialize_for_session(master)
             return redirect("raffle:database")
     else:
         form = ConfigForm()
@@ -194,28 +192,14 @@ def results_view(request: HttpRequest) -> HttpResponse:
     event_name = request.session.get(SESSION_KEYS["event_name"]) or ""
     event_capacity = int(request.session.get(SESSION_KEYS["event_capacity"]) or 0)
     event_date = request.session.get(SESSION_KEYS["event_date"]) or ""
-    # Ensure updated historical database is computed, stored, and previewed
+    # Ensure updated historical database is computed and stored
     master = request.session.get(SESSION_KEYS["master"]) or []
-    # Build adjustments from POST (checkboxes like absent_email and late_email)
-    adjustments = {}
-    if request.method == "POST":
-        for s in selected:
-            email = (s.get("email") or "").lower()
-            if not email:
-                continue
-            adjustments[email] = {
-                "absent": bool(request.POST.get(f"absent_{email}")),
-                "late": bool(request.POST.get(f"late_{email}")),
-            }
-        request.session["raffle_adjustments"] = adjustments
-    else:
-        adjustments = request.session.get("raffle_adjustments") or {}
+    adjustments = request.session.get("raffle_adjustments") or {}
 
     updated_csv = generate_updated_history_csv(master, selected, event_name, adjustments)
     request.session[SESSION_KEYS["updated_history_csv"]] = updated_csv
     # Persist per user
     HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": updated_csv})
-    updated_rows = parse_csv_upload(io.BytesIO(updated_csv.encode("utf-8")))
     # Persist raffle run for history listing
     try:
         selected_csv = _to_csv(selected)
@@ -254,6 +238,25 @@ def event_detail_view(request: HttpRequest, run_id: int) -> HttpResponse:
     run = RaffleRun.objects.get(user=request.user, id=run_id)
     selected_rows = parse_csv_upload(io.BytesIO(run.selected_csv_text.encode("utf-8"))) if run.selected_csv_text else []
     eligible_rows = parse_csv_upload(io.BytesIO(run.eligible_csv_text.encode("utf-8"))) if run.eligible_csv_text else []
+    if request.method == "POST":
+        # Build adjustments and apply to historical DB
+        adjustments = {}
+        for s in selected_rows:
+            email = (s.get("email") or "").lower()
+            if not email:
+                continue
+            adjustments[email] = {
+                "absent": bool(request.POST.get(f"absent_{email}")),
+                "late": bool(request.POST.get(f"late_{email}")),
+            }
+        # Load historical
+        hd = HistoricalData.objects.filter(user=request.user).first()
+        master = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8"))) if (hd and hd.csv_text) else []
+        # Apply updated historical with just selected rows; event name from run
+        updated_csv = generate_updated_history_csv(master, selected_rows, run.name, adjustments)
+        HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": updated_csv})
+        request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.BytesIO(updated_csv.encode("utf-8")))
+        return redirect("raffle:event_detail", run_id=run.id)
     return render(
         request,
         "raffle/event_detail.html",
@@ -434,6 +437,18 @@ def login_view(request: HttpRequest) -> HttpResponse:
 def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
     return redirect("raffle:login")
+
+
+@login_required
+def settings_view(request: HttpRequest) -> HttpResponse:
+    if request.method == "POST":
+        form = UserSettingsForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect("raffle:upload")
+    else:
+        form = UserSettingsForm(instance=request.user)
+    return render(request, "raffle/settings.html", {"form": form})
 
 
 # Helpers

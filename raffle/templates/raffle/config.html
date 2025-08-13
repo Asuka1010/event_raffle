@@ -30,9 +30,13 @@
         {{ form.event_date.label_tag }}
         {{ form.event_date }}
       </div>
+      <div class="form-group">
+        {{ form.signup_csv.label_tag }}
+        {{ form.signup_csv }}
+      </div>
       <div class="button-container">
-        <a href="{% url 'raffle:upload' %}" class="btn btn-secondary">Back to File Upload</a>
-        <button type="submit" class="btn btn-primary">Proceed</button>
+        <a href="{% url 'raffle:upload' %}" class="btn btn-secondary">Back</a>
+        <button type="submit" class="btn btn-primary">Run Selection</button>
       </div>
     </form>
   </div>

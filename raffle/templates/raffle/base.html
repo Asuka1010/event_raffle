@@ -15,7 +15,7 @@
           {% if request.user.is_authenticated %}
             <span style="margin-right:12px; color:#6b7280;">{{ request.user.username }}</span>
             <a class="btn btn-secondary" href="{% url 'raffle:events' %}" style="margin-right:8px;">Events</a>
-            <a class="btn btn-secondary" href="{% url 'raffle:edit_historical' %}" style="margin-right:8px;">Edit Historical</a>
+            <a class="btn btn-secondary" href="{% url 'raffle:settings' %}" style="margin-right:8px;">Settings</a>
             <a class="btn btn-secondary" href="{% url 'raffle:logout' %}">Logout</a>
           {% else %}
             <a class="btn btn-secondary" href="{% url 'raffle:login' %}">Login</a>

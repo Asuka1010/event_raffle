@@ -3,26 +3,14 @@
 {% block title %}Upload CSVs | Raffle{% endblock %}
 {% block content %}
 <div class="header">
-  <h1>Student Event Management System</h1>
+  <h1>Minerva event management</h1>
   <p>Upload sign-ups, manage events, and maintain historical attendance</p>
   </div>
 
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
   <div class="cards-grid">
-    <div class="card">
-      <div class="card-header">
-        <h3>📤 Event Sign-ups</h3>
-        <p>Upload the CSV file containing student sign-ups for the new event</p>
-      </div>
-      <div class="card-content">
-        {{ form.signup_csv.label_tag }}
-        {{ form.signup_csv }}
-        <div class="button-container" style="justify-content:flex-start; margin-top:12px;">
-          <button class="btn btn-primary" type="submit">Add event</button>
-        </div>
-      </div>
-    </div>
+    <!-- Sign-ups upload moved to event configuration page -->
 
     {% if not request.session.raffle_historical %}
       <div class="card">
@@ -68,7 +56,7 @@
           </form>
           <div class="help-text">The table shows the latest attendance date per student alongside historical stats.</div>
           {% if historical_rows %}
-          <div class="table-container" style="margin-top:16px; max-height: 300px; overflow: auto;">
+          <div class="table-container" style="margin-top:16px; max-height: 70vh; overflow: auto;">
             <table>
               <thead>
                 <tr>
@@ -80,7 +68,6 @@
                   <th>Absent</th>
                   <th>Late</th>
                   <th>Latest (Date)</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -94,7 +81,6 @@
                   <td>{{ r.absent }}</td>
                   <td>{{ r.late }}</td>
                   <td>{{ r.latest_date|default:'—' }}</td>
-                  <td><a class="btn btn-secondary" href="{% url 'raffle:edit_historical' %}">Edit</a></td>
                 </tr>
                 {% endfor %}
               </tbody>

@@ -1,63 +1,7 @@
 {% extends 'raffle/base.html' %}
 {% block title %}Student Database | Raffle{% endblock %}
 {% block content %}
-<div class="header">
-  <h1>Student Database</h1>
-  <p id="database-info">Event: {{ event_name }} | Capacity: {{ event_capacity }} | Total Students: {{ total }}</p>
-</div>
-
-<div class="card">
-  <div class="card-header">
-    <h3>👁️ Current Student Database</h3>
-    <p>Review student attendance history</p>
-  </div>
-  <div class="card-content">
-    <form method="get" style="margin-bottom: 16px;">
-      <div class="search-container">
-        <span class="search-icon">🔍</span>
-        <input type="text" name="q" value="{{ q }}" placeholder="Search by name, email, or class..." />
-      </div>
-    </form>
-
-    <div class="table-container">
-      <table id="students-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Class</th>
-            <th>Response</th>
-            <th>Events Attended</th>
-            <th>Absences</th>
-            <th>Late Arrivals</th>
-            <th>Latest Attended</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for s in students %}
-          <tr>
-            <td>{{ s.name }}</td>
-            <td>{{ s.email }}</td>
-            <td>{{ s.class }}</td>
-            <td>
-              {% if s.response|lower == 'yes' %}<span class="badge badge-yes">yes</span>{% else %}<span class="badge badge-no">no</span>{% endif %}
-            </td>
-            <td>{{ s.num_events_attended }}</td>
-            <td>{{ s.num_absences }}</td>
-            <td>{{ s.num_late_arrivals }}</td>
-            <td>{{ s.latest_attended|default:'Never' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<div class="button-container">
-  <a href="{% url 'raffle:config' %}" class="btn btn-secondary">Back to Event Configuration</a>
-  <a href="{% url 'raffle:selection' %}" class="btn btn-primary">Proceed to Attendee Selection</a>
-  </div>
+<script>window.location.href = "{% url 'raffle:selection' %}";</script>
 {% endblock %}
 
 
