@@ -245,7 +245,11 @@ def generate_ranking_csv(eligible_ranked: List[StudentRow]) -> str:
 
 
 def generate_updated_history_csv(
-    master_students: List[StudentRow], selected: List[StudentRow], event_name: str, adjustments: Optional[Dict[str, Dict[str, bool]]] = None
+    master_students: List[StudentRow],
+    selected: List[StudentRow],
+    event_name: str,
+    adjustments: Optional[Dict[str, Dict[str, bool]]] = None,
+    event_date_str: Optional[str] = None,
 ) -> str:
     """Generate historical database CSV in the same format as the provided sample.
 
@@ -254,6 +258,13 @@ def generate_updated_history_csv(
     We preserve any incoming EventN columns if present on a row, otherwise keep them blank.
     """
     selected_emails = {str(s.get("email") or "").lower() for s in selected}
+    selected_name_pairs = {
+        (
+            (s.get("first_name") or ((s.get("name") or "").split(" ")[0] if s.get("name") else "")).strip().lower(),
+            (s.get("last_name") or (" ".join((s.get("name") or "").split(" ")[1:]) if s.get("name") else "")).strip().lower(),
+        )
+        for s in selected
+    }
     adjustments = adjustments or {}
     output = io.StringIO()
 
@@ -285,7 +296,8 @@ def generate_updated_history_csv(
         last_name = s.get("last_name") or ""
         student_class = s.get("class") or ""
 
-        is_selected = email in selected_emails
+        name_pair = ((first_name or "").strip().lower(), (last_name or "").strip().lower())
+        is_selected = (email in selected_emails) or (name_pair in selected_name_pairs)
         num_attended = int(s.get("num_events_attended") or 0) + (1 if is_selected else 0)
         num_absences = int(s.get("num_absences") or 0)
         num_late = int(s.get("num_late_arrivals") or 0)
@@ -300,7 +312,7 @@ def generate_updated_history_csv(
 
         latest_attended_label = s.get("latest_attended") or ""
         if is_selected:
-            latest_attended_label = event_name
+            latest_attended_label = (event_date_str or "")
 
         row = [email, first_name, last_name, student_class]
         # EventN columns

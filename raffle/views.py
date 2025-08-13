@@ -195,7 +195,7 @@ def results_view(request: HttpRequest) -> HttpResponse:
     master = request.session.get(SESSION_KEYS["master"]) or []
     adjustments = request.session.get("raffle_adjustments") or {}
 
-    updated_csv = generate_updated_history_csv(master, selected, event_name, adjustments)
+    updated_csv = generate_updated_history_csv(master, selected, event_name, adjustments, event_date)
     updated_rows = parse_csv_upload(io.BytesIO(updated_csv.encode("utf-8")))
 
     if request.method == "POST":
