@@ -12,6 +12,7 @@ class ConfigForm(forms.Form):
     event_capacity = forms.IntegerField(min_value=1, required=True, label="Event Capacity")
     event_date = forms.DateField(required=True, label="Event Date", widget=forms.DateInput(attrs={"type": "date"}))
     signup_csv = forms.FileField(allow_empty_file=False, required=True, label="Sign-up CSV")
+    event_cutoff = forms.DateTimeField(required=False, label="Registration Cutoff (optional)", widget=forms.DateTimeInput(attrs={"type": "datetime-local"}))
 
 
 class RegistrationForm(UserCreationForm):

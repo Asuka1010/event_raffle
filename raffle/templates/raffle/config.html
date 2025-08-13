@@ -31,6 +31,11 @@
         {{ form.event_date }}
       </div>
       <div class="form-group">
+        {{ form.event_cutoff.label_tag }}
+        {{ form.event_cutoff }}
+        <div class="help-text">Students who signed up before this date/time will be ensured registration.</div>
+      </div>
+      <div class="form-group">
         {{ form.signup_csv.label_tag }}
         {{ form.signup_csv }}
       </div>

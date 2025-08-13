@@ -16,6 +16,7 @@ from .services import (
     generate_ranking_csv,
     generate_updated_history_csv,
     parse_csv_upload,
+    parse_datetime,
     run_priority_raffle,
 )
 
@@ -127,11 +128,24 @@ def config_view(request: HttpRequest) -> HttpResponse:
             request.session[SESSION_KEYS["event_date"]] = str(form.cleaned_data["event_date"])  # ISO
             # Build master from uploaded signups and saved historical
             signups = parse_csv_upload(form.cleaned_data["signup_csv"])
+            cutoff_dt = form.cleaned_data.get("event_cutoff")
             persisted_historical = request.session.get(SESSION_KEYS["historical"]) or []
             if not persisted_historical:
                 hd = HistoricalData.objects.filter(user=request.user).first()
                 if hd and hd.csv_text:
                     persisted_historical = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
+            # If signup CSV has signup date/time column, filter/sort around cutoff
+            # Accept flexible headers like 'signup time', 'timestamp', 'submitted at'
+            if cutoff_dt:
+                for row in signups:
+                    dt_str = row.get("signup time") or row.get("timestamp") or row.get("submitted at") or row.get("submission time")
+                    row["_signup_dt"] = parse_datetime(dt_str)
+                # People signing up before cutoff are ensured registration: mark response yes
+                for row in signups:
+                    if row.get("_signup_dt") and row["_signup_dt"] <= cutoff_dt:
+                        row["response"] = "yes"
+                # Sort: before cutoff first, then by datetime ascending
+                signups.sort(key=lambda r: (not (r.get("_signup_dt") and r["_signup_dt"] <= cutoff_dt), r.get("_signup_dt") or datetime.max))
             master = consolidate_students(signups, persisted_historical)
             request.session[SESSION_KEYS["signups"]] = signups
             request.session[SESSION_KEYS["master"]] = _serialize_for_session(master)

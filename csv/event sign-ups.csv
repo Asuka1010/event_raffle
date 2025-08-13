@@ -1,14 +1,14 @@
-﻿Attendee ID,Firstname,Lastname,Participation status,Email
-1531807,Rishabh,Java,planned,a1@uni.minerva.edu
-1531808,Cecilia,Xu,planned,a2@uni.minerva.edu
-1531816,Elijah,Umana,planned,a3@uni.minerva.edu
-1531832,Robson,Silva,planned,a4@uni.minerva.edu
-1531848,Phuong (Zelda),Truong,planned,a5@uni.minerva.edu
-1531849,Cristian,Frunze,planned,a6@uni.minerva.edu
-1531855,Koosha,Azim,planned,a7@uni.minerva.edu
-1531860,Liza,Sadaterashvili,cancelled_by_admin,a8@uni.minerva.edu
-1532227,Siqi,Huo,planned,a9@uni.minerva.edu
-1533997,Seo,kim,planned,a10@uni.minerva.edu
-1536067,Gyujun,Park,planned,a11@uni.minerva.edu
-1537505,Wolfgang,Sander,planned,a12.sander@uni.minerva.edu
-1537634,Aya,Elnakeb,planned,a13@uni.minerva.edu
+﻿Attendee ID,Firstname,Lastname,Participation status,Email,Date
+1531807,Rishabh,Java,planned,a1@uni.minerva.edu,9/16/25 09:00
+1531808,Cecilia,Xu,planned,a2@uni.minerva.edu,9/17/25 09:00
+1531816,Elijah,Umana,planned,a3@uni.minerva.edu,9/18/25 09:00
+1531832,Robson,Silva,planned,a4@uni.minerva.edu,9/19/25 09:00
+1531848,Phuong (Zelda),Truong,planned,a5@uni.minerva.edu,9/20/25 09:00
+1531849,Cristian,Frunze,planned,a6@uni.minerva.edu,10/21/25 09:00
+1531855,Koosha,Azim,planned,a7@uni.minerva.edu,10/22/25 09:00
+1531860,Liza,Sadaterashvili,cancelled_by_admin,a8@uni.minerva.edu,10/23/25 09:00
+1532227,Siqi,Huo,planned,a9@uni.minerva.edu,10/24/25 09:00
+1533997,Seo,kim,planned,a10@uni.minerva.edu,10/25/25 09:00
+1536067,Gyujun,Park,planned,a11@uni.minerva.edu,10/26/25 09:00
+1537505,Wolfgang,Sander,planned,a12.sander@uni.minerva.edu,10/27/25 09:00
+1537634,Aya,Elnakeb,planned,a13@uni.minerva.edu,10/28/25 09:00

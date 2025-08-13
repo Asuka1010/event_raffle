@@ -62,6 +62,17 @@ def parse_csv_upload(uploaded_file) -> List[StudentRow]:
     return rows
 
 
+def parse_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M", "%m/%d/%Y %H:%M", "%Y-%m-%dT%H:%M"):
+        try:
+            return datetime.strptime(value.strip(), fmt)
+        except Exception:
+            continue
+    return None
+
+
 def consolidate_students(signups: List[StudentRow], historical: List[StudentRow]) -> List[StudentRow]:
     """Combine current sign-ups with historical database into a master list.
 
