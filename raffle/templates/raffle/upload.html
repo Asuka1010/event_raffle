@@ -50,19 +50,19 @@
             <select name="event">
               <option value="">All</option>
               {% for run in runs %}
-              <option value="{{ run.id }}" {% if focus_run_id == run.id|stringformat:'s' %}selected{% endif %}>{{ run.name }} ({{ run.date|default:'—' }})</option>
+              <option value="{{ run.id }}" {% if focus_run_id == run.id|stringformat:"s" %}selected{% endif %}>{{ run.name }} ({{ run.date|default:'—' }})</option>
               {% endfor %}
             </select>
             <label>Sort by:</label>
             <select name="sort">
               <option value="">None</option>
-              <option value="attended" {% if sort=='attended' %}selected{% endif %}>Attended</option>
-              <option value="absent" {% if sort=='absent' %}selected{% endif %}>Absent</option>
-              <option value="late" {% if sort=='late' %}selected{% endif %}>Late</option>
+              <option value="attended" {% if sort == 'attended' %}selected{% endif %}>Attended</option>
+              <option value="absent" {% if sort == 'absent' %}selected{% endif %}>Absent</option>
+              <option value="late" {% if sort == 'late' %}selected{% endif %}>Late</option>
             </select>
             <select name="direction">
-              <option value="asc" {% if direction=='asc' %}selected{% endif %}>Ascending</option>
-              <option value="desc" {% if direction=='desc' %}selected{% endif %}>Descending</option>
+              <option value="asc" {% if direction == 'asc' %}selected{% endif %}>Ascending</option>
+              <option value="desc" {% if direction == 'desc' %}selected{% endif %}>Descending</option>
             </select>
             <button class="btn btn-secondary" type="submit">Apply</button>
           </form>
