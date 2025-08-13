@@ -291,32 +291,44 @@ def generate_updated_history_csv(
 
     for s in base_historical_students:
         email = (s.get("email") or "").lower()
-        # Prefer names from historical/base if present; otherwise fall back
-        first_name = s.get("first_name") or ""
-        last_name = s.get("last_name") or ""
+        # Prefer names from normalized fields; fall back to CSV columns; last resort split name
+        first_name = (
+            s.get("first_name")
+            or s.get("first name")
+            or ((s.get("name") or "").split(" ")[0] if s.get("name") else "")
+        )
+        last_name = (
+            s.get("last_name")
+            or s.get("last name")
+            or (" ".join((s.get("name") or "").split(" ")[1:]) if s.get("name") else "")
+        )
         student_class = s.get("class") or ""
 
         is_selected = email in selected_emails
-        num_attended = int(s.get("num_events_attended") or 0) + (1 if is_selected else 0)
-        num_absences = int(s.get("num_absences") or 0)
-        num_late = int(s.get("num_late_arrivals") or 0)
+        num_attended = _to_int(s.get("num_events_attended") or s.get("attended") or 0) + (1 if is_selected else 0)
+        num_absences = _to_int(s.get("num_absences") or s.get("absent") or 0)
+        num_late = _to_int(s.get("num_late_arrivals") or s.get("late") or 0)
         adj = adjustments.get(email) or {}
         if adj.get("absent"):
             num_absences += 1
         if adj.get("late"):
             num_late += 1
+        # events_attended may be list or CSV string
         events_attended = list(s.get("events_attended") or [])
+        if not events_attended and s.get("attended events"):
+            events_attended = _split_events(s.get("attended events"))
         if is_selected:
             events_attended.append(event_name)
 
-        latest_attended_label = s.get("latest_attended") or ""
+        latest_attended_label = s.get("latest_attended") or s.get("latest attended") or ""
         if is_selected:
             # Historical column stores latest attended label; use event name for compatibility
             latest_attended_label = event_name
 
         row = [email, first_name, last_name, student_class]
         # EventN columns
-        events_cols: Dict[str, Any] = s.get("_events_columns") or {}
+        # Preserve EventN columns if present on the row (either packed or inline)
+        events_cols: Dict[str, Any] = s.get("_events_columns") or {k: s.get(k) for k in s.keys() if str(k).startswith("event")}
         for i in range(1, max_event_cols + 1):
             row.append(events_cols.get(f"event{i}") or "")
         # Counters and aggregates
