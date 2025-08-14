@@ -22,7 +22,16 @@ def _strip_bom(text):
 
 def parse_csv_upload(uploaded_file) -> List[StudentRow]:
     """Generic CSV parser for backward compatibility"""
-    text = uploaded_file.read().decode("utf-8")
+    # Handle both file objects and string content
+    if hasattr(uploaded_file, 'read'):
+        # It's a file-like object
+        text = uploaded_file.read()
+        if isinstance(text, bytes):
+            text = text.decode("utf-8")
+    else:
+        # It's already a string
+        text = str(uploaded_file)
+    
     text = _strip_bom(text)
     reader = csv.DictReader(io.StringIO(text))
     rows = []
@@ -33,7 +42,16 @@ def parse_csv_upload(uploaded_file) -> List[StudentRow]:
 
 def parse_event_signup_csv(uploaded_file) -> List[StudentRow]:
     """Parse event signup CSV with specific format: Attendee ID, Firstname, Lastname, Participation status, Email, Date"""
-    text = uploaded_file.read().decode("utf-8")
+    # Handle both file objects and string content
+    if hasattr(uploaded_file, 'read'):
+        # It's a file-like object
+        text = uploaded_file.read()
+        if isinstance(text, bytes):
+            text = text.decode("utf-8")
+    else:
+        # It's already a string
+        text = str(uploaded_file)
+    
     text = _strip_bom(text)
     reader = csv.DictReader(io.StringIO(text))
     rows = []
@@ -53,7 +71,16 @@ def parse_event_signup_csv(uploaded_file) -> List[StudentRow]:
 
 def parse_historical_csv(uploaded_file) -> List[StudentRow]:
     """Parse historical database CSV with specific format"""
-    text = uploaded_file.read().decode("utf-8")
+    # Handle both file objects and string content
+    if hasattr(uploaded_file, 'read'):
+        # It's a file-like object
+        text = uploaded_file.read()
+        if isinstance(text, bytes):
+            text = text.decode("utf-8")
+    else:
+        # It's already a string
+        text = str(uploaded_file)
+    
     text = _strip_bom(text)
     reader = csv.DictReader(io.StringIO(text))
     rows = []
