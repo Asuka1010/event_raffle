@@ -103,10 +103,15 @@ def parse_historical_csv(uploaded_file) -> List[StudentRow]:
         # It's already a string
         text = str(uploaded_file)
     
+    print(f"DEBUG: parse_historical_csv - text length: {len(text)}")
     text = _strip_bom(text)
     reader = csv.DictReader(io.StringIO(text))
+    print(f"DEBUG: parse_historical_csv - fieldnames: {reader.fieldnames}")
+    
     rows = []
-    for row in reader:
+    for i, row in enumerate(reader):
+        print(f"DEBUG: parse_historical_csv - row {i}: {dict(row)}")
+        
         # Extract event columns (all columns except the standard ones)
         event_columns = {}
         standard_columns = {"Email", "Preferred Name/Nick Name", "First Name", "Last Name", "Class", "Absent", "Late", "Attended"}
@@ -142,6 +147,10 @@ def parse_historical_csv(uploaded_file) -> List[StudentRow]:
             mapped_row["latest attended"] = latest_event
         
         rows.append(mapped_row)
+        if i < 3:  # Only print first 3 rows for debugging
+            print(f"DEBUG: parse_historical_csv - mapped_row {i}: {mapped_row}")
+    
+    print(f"DEBUG: parse_historical_csv - total rows parsed: {len(rows)}")
     return rows
 
 
@@ -283,7 +292,11 @@ def run_priority_raffle(students, capacity):
     selected = eligible_sorted[:capacity]
     remaining = eligible_sorted[capacity:]
     
-    return selected, remaining
+    # Return in the format expected by the view: (eligible_ranked, selected)
+    # eligible_ranked should include both selected and remaining students
+    eligible_ranked = eligible_sorted
+    
+    return eligible_ranked, selected
 
 
 def generate_ranking_csv(eligible_ranked):
