@@ -78,15 +78,24 @@ def upload_view(request: HttpRequest) -> HttpResponse:
         print(f"DEBUG: Found historical data in database, length: {len(hd.csv_text)}")
         historical_rows = parse_historical_csv(io.StringIO(hd.csv_text))
         print(f"DEBUG: Parsed {len(historical_rows)} rows from database")
+        print(f"DEBUG: First row sample: {historical_rows[0] if historical_rows else 'None'}")
     elif SESSION_KEYS["historical"] in request.session:
         # Parse from session
         print(f"DEBUG: Found historical data in session")
-        historical_rows = _deserialize_from_session(request.session[SESSION_KEYS["historical"]])
-        print(f"DEBUG: Parsed {len(historical_rows)} rows from session")
+        session_data = request.session[SESSION_KEYS["historical"]]
+        print(f"DEBUG: Session data type: {type(session_data)}, length: {len(session_data) if session_data else 0}")
+        historical_rows = _deserialize_from_session(session_data)
+        print(f"DEBUG: Deserialized {len(historical_rows)} rows from session")
+        print(f"DEBUG: First row sample: {historical_rows[0] if historical_rows else 'None'}")
     else:
         print(f"DEBUG: No historical data found in database or session")
         print(f"DEBUG: User: {request.user}")
         print(f"DEBUG: HistoricalData objects: {HistoricalData.objects.filter(user=request.user).count()}")
+        print(f"DEBUG: Session keys: {list(request.session.keys())}")
+        print(f"DEBUG: Looking for key: {SESSION_KEYS['historical']}")
+
+    print(f"DEBUG: Final historical_rows length: {len(historical_rows)}")
+    print(f"DEBUG: Template will receive: historical_rows = {bool(historical_rows)}")
 
     # Get past raffle runs for event filtering
     runs = RaffleRun.objects.filter(user=request.user).order_by("-date")
@@ -638,7 +647,8 @@ def _serialize_for_session(rows):
 
 def _deserialize_from_session(serialized_rows):
     """Deserialize rows from session back to a list of dictionaries."""
-    return [json.loads(json.dumps(r)) for r in serialized_rows]
+    # The data is already in the correct format, just return it directly
+    return serialized_rows
 
 
 def _to_csv(rows) -> str:

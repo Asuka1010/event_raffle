@@ -105,50 +105,110 @@ def parse_historical_csv(uploaded_file) -> List[StudentRow]:
     
     print(f"DEBUG: parse_historical_csv - text length: {len(text)}")
     text = _strip_bom(text)
-    reader = csv.DictReader(io.StringIO(text))
-    print(f"DEBUG: parse_historical_csv - fieldnames: {reader.fieldnames}")
     
+    # Split into lines and find the header row
+    lines = text.strip().split('\n')
+    header_row = None
+    data_start_row = 0
+    
+    for i, line in enumerate(lines):
+        if 'Email' in line and 'First Name' in line and 'Last Name' in line:
+            header_row = line
+            data_start_row = i + 1
+            break
+    
+    if not header_row:
+        print("DEBUG: Could not find header row with Email, First Name, Last Name")
+        return []
+    
+    print(f"DEBUG: Found header at row {data_start_row}: {header_row}")
+    
+    # Parse the header to get column positions
+    header_columns = list(csv.reader([header_row]))[0]
+    print(f"DEBUG: Header columns: {header_columns}")
+    
+    # Find the positions of important columns
+    email_col = None
+    first_name_col = None
+    last_name_col = None
+    class_col = None
+    absent_col = None
+    late_col = None
+    attended_col = None
+    
+    for i, col in enumerate(header_columns):
+        col_clean = col.strip()
+        if col_clean == "Email":
+            email_col = i
+        elif col_clean == "First Name":
+            first_name_col = i
+        elif col_clean == "Last Name":
+            last_name_col = i
+        elif col_clean == "Class":
+            class_col = i
+        elif col_clean == "Absent":
+            absent_col = i
+        elif col_clean == "Late":
+            late_col = i
+        elif col_clean == "Attended":
+            attended_col = i
+    
+    print(f"DEBUG: Column positions - Email: {email_col}, First: {first_name_col}, Last: {last_name_col}")
+    
+    if email_col is None or first_name_col is None or last_name_col is None:
+        print("DEBUG: Missing required columns")
+        return []
+    
+    # Parse data rows
     rows = []
-    for i, row in enumerate(reader):
-        print(f"DEBUG: parse_historical_csv - row {i}: {dict(row)}")
+    for i, line in enumerate(lines[data_start_row:], data_start_row):
+        if not line.strip():
+            continue
+            
+        row_data = list(csv.reader([line]))[0]
         
-        # Extract event columns (all columns except the standard ones)
-        event_columns = {}
-        standard_columns = {"Email", "Preferred Name/Nick Name", "First Name", "Last Name", "Class", "Absent", "Late", "Attended"}
+        if i < data_start_row + 3:  # Debug first few rows
+            print(f"DEBUG: Row {i}: {row_data}")
         
-        for key, value in row.items():
-            if key and key.strip() and key not in standard_columns:
-                event_columns[key.strip()] = (value or "").strip()
+        # Check if row has essential data
+        if (len(row_data) <= max(email_col, first_name_col, last_name_col) or
+            not row_data[email_col] or not row_data[first_name_col] or not row_data[last_name_col]):
+            print(f"DEBUG: Skipping row {i} - missing essential data")
+            continue
         
         # Map to our expected format
         mapped_row = {
-            "email": (row.get("Email") or "").strip(),
-            "first name": (row.get("First Name") or "").strip(),
-            "last name": (row.get("Last Name") or "").strip(),
-            "class": (row.get("Class") or "").strip(),
-            "absent": row.get("Absent") or "0",
-            "late": row.get("Late") or "0",
-            "attended": row.get("Attended") or "0",
-            "events_attended": "",  # Will be populated from event columns
-            "latest attended": "",  # Will be populated from event columns
+            "email": row_data[email_col].strip(),
+            "first name": row_data[first_name_col].strip(),
+            "last name": row_data[last_name_col].strip(),
+            "class": row_data[class_col].strip() if class_col and len(row_data) > class_col else "",
+            "absent": row_data[absent_col].strip() if absent_col and len(row_data) > absent_col else "0",
+            "late": row_data[late_col].strip() if late_col and len(row_data) > late_col else "0",
+            "attended": row_data[attended_col].strip() if attended_col and len(row_data) > attended_col else "0",
+            "events_attended": "",
+            "latest attended": "",
         }
         
-        # Process event columns to build events_attended and latest attended
+        # Process event columns (columns between Class and Absent)
         attended_events = []
         latest_event = ""
-        for event_name, status in event_columns.items():
-            if status.lower() == "attended":
-                attended_events.append(event_name)
-                if not latest_event or event_name > latest_event:  # Simple string comparison for now
-                    latest_event = event_name
+        if class_col and absent_col:
+            for j in range(class_col + 1, absent_col):
+                if j < len(row_data) and j < len(header_columns):
+                    event_name = header_columns[j].strip()
+                    status = row_data[j].strip() if j < len(row_data) else ""
+                    if event_name and status.lower() == "attended":
+                        attended_events.append(event_name)
+                        if not latest_event or event_name > latest_event:
+                            latest_event = event_name
         
         if attended_events:
             mapped_row["events_attended"] = ", ".join(attended_events)
             mapped_row["latest attended"] = latest_event
         
         rows.append(mapped_row)
-        if i < 3:  # Only print first 3 rows for debugging
-            print(f"DEBUG: parse_historical_csv - mapped_row {i}: {mapped_row}")
+        if i < data_start_row + 3:  # Debug first few rows
+            print(f"DEBUG: Mapped row {i}: {mapped_row}")
     
     print(f"DEBUG: parse_historical_csv - total rows parsed: {len(rows)}")
     return rows
