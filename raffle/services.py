@@ -103,7 +103,6 @@ def parse_historical_csv(uploaded_file) -> List[StudentRow]:
         # It's already a string
         text = str(uploaded_file)
     
-    print(f"DEBUG: parse_historical_csv - text length: {len(text)}")
     text = _strip_bom(text)
     
     # Split into lines and find the header row
@@ -118,14 +117,10 @@ def parse_historical_csv(uploaded_file) -> List[StudentRow]:
             break
     
     if not header_row:
-        print("DEBUG: Could not find header row with Email, First Name, Last Name")
         return []
-    
-    print(f"DEBUG: Found header at row {data_start_row}: {header_row}")
     
     # Parse the header to get column positions
     header_columns = list(csv.reader([header_row]))[0]
-    print(f"DEBUG: Header columns: {header_columns}")
     
     # Find the positions of important columns
     email_col = None
@@ -153,10 +148,7 @@ def parse_historical_csv(uploaded_file) -> List[StudentRow]:
         elif col_clean == "Attended":
             attended_col = i
     
-    print(f"DEBUG: Column positions - Email: {email_col}, First: {first_name_col}, Last: {last_name_col}")
-    
     if email_col is None or first_name_col is None or last_name_col is None:
-        print("DEBUG: Missing required columns")
         return []
     
     # Parse data rows
@@ -167,13 +159,9 @@ def parse_historical_csv(uploaded_file) -> List[StudentRow]:
             
         row_data = list(csv.reader([line]))[0]
         
-        if i < data_start_row + 3:  # Debug first few rows
-            print(f"DEBUG: Row {i}: {row_data}")
-        
         # Check if row has essential data
         if (len(row_data) <= max(email_col, first_name_col, last_name_col) or
             not row_data[email_col] or not row_data[first_name_col] or not row_data[last_name_col]):
-            print(f"DEBUG: Skipping row {i} - missing essential data")
             continue
         
         # Map to our expected format
@@ -207,10 +195,7 @@ def parse_historical_csv(uploaded_file) -> List[StudentRow]:
             mapped_row["latest attended"] = latest_event
         
         rows.append(mapped_row)
-        if i < data_start_row + 3:  # Debug first few rows
-            print(f"DEBUG: Mapped row {i}: {mapped_row}")
     
-    print(f"DEBUG: parse_historical_csv - total rows parsed: {len(rows)}")
     return rows
 
 
