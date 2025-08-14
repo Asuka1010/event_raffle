@@ -84,7 +84,7 @@
                   <td>{{ r.attended }}</td>
                   <td>{{ r.absent }}</td>
                   <td>{{ r.late }}</td>
-                  <td>{{ r.latest_date|default:'—' }}</td>
+                  <td>{{ r|get_item:"latest attended"|default:'—' }}</td>
                 </tr>
                 {% endfor %}
               </tbody>

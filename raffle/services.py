@@ -36,7 +36,7 @@ def parse_csv_upload(uploaded_file) -> List[StudentRow]:
     reader = csv.DictReader(io.StringIO(text))
     rows = []
     for row in reader:
-        rows.append({k.strip(): v.strip() if v else "" for k, v in row.items()})
+        rows.append({k.strip() if k else "": v.strip() if v else "" for k, v in row.items()})
     return rows
 
 
@@ -58,12 +58,12 @@ def parse_event_signup_csv(uploaded_file) -> List[StudentRow]:
     for row in reader:
         # Map to our expected format
         mapped_row = {
-            "email": row.get("Email", "").strip(),
-            "firstname": row.get("Firstname", "").strip(),
-            "lastname": row.get("Lastname", "").strip(),
-            "participation status": row.get("Participation status", "").strip(),
-            "attendee id": row.get("Attendee ID", "").strip(),
-            "signup date": row.get("Date", "").strip(),
+            "email": (row.get("Email") or "").strip(),
+            "firstname": (row.get("Firstname") or "").strip(),
+            "lastname": (row.get("Lastname") or "").strip(),
+            "participation status": (row.get("Participation status") or "").strip(),
+            "attendee id": (row.get("Attendee ID") or "").strip(),
+            "signup date": (row.get("Date") or "").strip(),
         }
         rows.append(mapped_row)
     return rows
@@ -90,18 +90,18 @@ def parse_historical_csv(uploaded_file) -> List[StudentRow]:
         standard_columns = {"Email", "Preferred Name/Nick Name", "First Name", "Last Name", "Class", "Absent", "Late", "Attended"}
         
         for key, value in row.items():
-            if key not in standard_columns and key.strip():
-                event_columns[key] = value.strip()
+            if key and key.strip() and key not in standard_columns:
+                event_columns[key.strip()] = (value or "").strip()
         
         # Map to our expected format
         mapped_row = {
-            "email": row.get("Email", "").strip(),
-            "first name": row.get("First Name", "").strip(),
-            "last name": row.get("Last Name", "").strip(),
-            "class": row.get("Class", "").strip(),
-            "absent": row.get("Absent", "0"),
-            "late": row.get("Late", "0"),
-            "attended": row.get("Attended", "0"),
+            "email": (row.get("Email") or "").strip(),
+            "first name": (row.get("First Name") or "").strip(),
+            "last name": (row.get("Last Name") or "").strip(),
+            "class": (row.get("Class") or "").strip(),
+            "absent": row.get("Absent") or "0",
+            "late": row.get("Late") or "0",
+            "attended": row.get("Attended") or "0",
             "events_attended": "",  # Will be populated from event columns
             "latest attended": "",  # Will be populated from event columns
         }
