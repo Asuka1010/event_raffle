@@ -36,7 +36,29 @@ def parse_csv_upload(uploaded_file) -> List[StudentRow]:
     reader = csv.DictReader(io.StringIO(text))
     rows = []
     for row in reader:
-        rows.append({k.strip() if k else "": v.strip() if v else "" for k, v in row.items()})
+        # Safely handle different data types
+        safe_row = {}
+        for k, v in row.items():
+            # Handle key
+            if k is None:
+                k = ""
+            elif isinstance(k, str):
+                k = k.strip()
+            else:
+                k = str(k).strip()
+            
+            # Handle value
+            if v is None:
+                v = ""
+            elif isinstance(v, (list, tuple)):
+                v = ", ".join(str(item).strip() for item in v)
+            elif isinstance(v, str):
+                v = v.strip()
+            else:
+                v = str(v).strip()
+            
+            safe_row[k] = v
+        rows.append(safe_row)
     return rows
 
 
