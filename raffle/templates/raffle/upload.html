@@ -12,7 +12,7 @@
   <div class="cards-grid">
     <!-- Sign-ups upload moved to event configuration page -->
 
-    {% if not request.session.raffle_historical %}
+    {% if not historical_rows %}
       <div class="card">
         <div class="card-header">
           <h3>🗄️ Historical Database</h3>

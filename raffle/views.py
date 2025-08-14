@@ -45,19 +45,28 @@ def upload_view(request: HttpRequest) -> HttpResponse:
             # Parse the uploaded historical CSV using the new format
             historical_csv = request.FILES.get("historical_csv")
             if historical_csv:
+                print(f"DEBUG: File uploaded: {historical_csv.name}, size: {historical_csv.size}")
                 # Read the file content first
                 csv_content = historical_csv.read().decode("utf-8")
+                print(f"DEBUG: CSV content length: {len(csv_content)}")
                 # Parse the content
                 historical_rows = parse_historical_csv(io.StringIO(csv_content))
+                print(f"DEBUG: Parsed {len(historical_rows)} rows from uploaded file")
                 # Save to session for now
                 request.session[SESSION_KEYS["historical"]] = _serialize_for_session(historical_rows)
+                print(f"DEBUG: Saved {len(historical_rows)} rows to session")
                 # Save to database
                 HistoricalData.objects.update_or_create(
                     user=request.user,
                     defaults={"csv_text": csv_content}
                 )
+                print(f"DEBUG: Saved to database for user {request.user}")
                 # messages.success(request, "Historical database uploaded successfully!") # Removed as per new_code
                 return redirect("raffle:upload")
+            else:
+                print(f"DEBUG: No historical_csv file found in request.FILES")
+        else:
+            print(f"DEBUG: Form validation failed: {form.errors}")
     else:
         form = UploadForm()
 
@@ -66,10 +75,18 @@ def upload_view(request: HttpRequest) -> HttpResponse:
     hd = HistoricalData.objects.filter(user=request.user).first()
     if hd and hd.csv_text:
         # Parse from database
+        print(f"DEBUG: Found historical data in database, length: {len(hd.csv_text)}")
         historical_rows = parse_historical_csv(io.StringIO(hd.csv_text))
+        print(f"DEBUG: Parsed {len(historical_rows)} rows from database")
     elif SESSION_KEYS["historical"] in request.session:
         # Parse from session
+        print(f"DEBUG: Found historical data in session")
         historical_rows = _deserialize_from_session(request.session[SESSION_KEYS["historical"]])
+        print(f"DEBUG: Parsed {len(historical_rows)} rows from session")
+    else:
+        print(f"DEBUG: No historical data found in database or session")
+        print(f"DEBUG: User: {request.user}")
+        print(f"DEBUG: HistoricalData objects: {HistoricalData.objects.filter(user=request.user).count()}")
 
     # Get past raffle runs for event filtering
     runs = RaffleRun.objects.filter(user=request.user).order_by("-date")
