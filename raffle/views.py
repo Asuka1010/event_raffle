@@ -16,10 +16,7 @@ from .services import (
     generate_ranking_csv,
     generate_updated_history_csv,
     parse_csv_upload,
-    parse_datetime,
     run_priority_raffle,
-    parse_historical_csv,
-    parse_event_signup_csv,
 )
 
 
@@ -38,76 +35,90 @@ SESSION_KEYS = {
 
 @login_required
 def upload_view(request: HttpRequest) -> HttpResponse:
-    """Handle initial historical CSV upload and display historical data"""
+    # Build historical preview for GET and POST rendering
+    historical_rows = []
+    try:
+        persisted_historical = request.session.get(SESSION_KEYS["historical"]) or []
+        if not persisted_historical:
+            hd = HistoricalData.objects.filter(user=request.user).first()
+            if hd and hd.csv_text:
+                persisted_historical = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
+        historical_rows = persisted_historical
+    except Exception:
+        historical_rows = []
+
+    # Provide events list and latest selection dates per email
+    runs = RaffleRun.objects.filter(user=request.user).order_by("-date", "-created_at")
+    email_to_latest_date = {}
+    for run in runs:
+        if not run.selected_csv_text:
+            continue
+        for row in parse_csv_upload(io.BytesIO(run.selected_csv_text.encode("utf-8"))):
+            email = (row.get("email") or "").lower()
+            if not email:
+                continue
+            d = run.date
+            if d and (email not in email_to_latest_date or email_to_latest_date[email] < str(d)):
+                email_to_latest_date[email] = str(d)
+
+    # Sorting and filtering parameters
+    sort_key = (request.GET.get("sort") or "").lower()
+    direction = (request.GET.get("direction") or "asc").lower()
+    focus_run_id = request.GET.get("event")
+
     if request.method == "POST":
         form = UploadForm(request.POST, request.FILES)
         if form.is_valid():
-            # Parse the uploaded historical CSV using the new format
-            historical_csv = request.FILES.get("historical_csv")
-            if historical_csv:
-                # Read the file content first
-                csv_content = historical_csv.read().decode("utf-8")
-                # Parse the content
-                historical_rows = parse_historical_csv(io.StringIO(csv_content))
-                # Save to session for now
-                request.session[SESSION_KEYS["historical"]] = _serialize_for_session(historical_rows)
-                # Save to database
-                HistoricalData.objects.update_or_create(
-                    user=request.user,
-                    defaults={"csv_text": csv_content}
-                )
-                # messages.success(request, "Historical database uploaded successfully!") # Removed as per new_code
-                return redirect("raffle:upload")
+            if form.cleaned_data.get("historical_csv"):
+                historical = parse_csv_upload(form.cleaned_data["historical_csv"])
+                request.session[SESSION_KEYS["historical"]] = historical
+                HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": _to_csv(historical)})
+            # Stay on page after saving historical; do not jump to config here
+            return redirect("raffle:upload")
     else:
         form = UploadForm()
-
-    # Get historical data from database or session
-    historical_rows = []
-    hd = HistoricalData.objects.filter(user=request.user).first()
-    if hd and hd.csv_text:
-        # Parse from database
-        historical_rows = parse_historical_csv(io.StringIO(hd.csv_text))
-    elif SESSION_KEYS["historical"] in request.session:
-        # Parse from session
-        historical_rows = _deserialize_from_session(request.session[SESSION_KEYS["historical"]])
-
-    # Get past raffle runs for event filtering
-    runs = RaffleRun.objects.filter(user=request.user).order_by("-date")
-
-    # Handle filtering and sorting
-    focus_run_id = request.GET.get("event", "")
-    sort_by = request.GET.get("sort", "")
-    direction = request.GET.get("direction", "asc")
-
+    # Apply filtering by event (selected students in that run)
     if focus_run_id:
-        # Filter by specific event
         try:
-            focus_run = RaffleRun.objects.get(id=focus_run_id, user=request.user)
-            # This would need more complex logic to filter historical data by event
-            pass
-        except RaffleRun.DoesNotExist:
+            run = RaffleRun.objects.get(user=request.user, id=int(focus_run_id))
+            selected_rows = parse_csv_upload(io.BytesIO((run.selected_csv_text or "").encode("utf-8")))
+            selected_emails = { (r.get("email") or "").lower() for r in selected_rows }
+            historical_rows = [r for r in historical_rows if (r.get("email") or "").lower() in selected_emails]
+        except Exception:
             pass
 
-    if sort_by:
-        reverse_sort = direction == "desc"
-        if sort_by == "attended":
-            historical_rows.sort(key=lambda x: _to_int(x.get(sort_by, 0)), reverse=reverse_sort)
-        elif sort_by in ["absent", "late"]:
-            historical_rows.sort(key=lambda x: _to_int(x.get(sort_by, 0)), reverse=reverse_sort)
+    # Sort
+    def sort_value(r, key):
+        try:
+            return int(r.get(key) or 0)
+        except Exception:
+            return 0
 
-    return render(request, "raffle/upload.html", {
-        "form": form,
-        "historical_rows": historical_rows,
-        "runs": runs,
-        "focus_run_id": focus_run_id,
-        "sort": sort_by,
-        "direction": direction,
-    })
+    if sort_key in {"attended", "absent", "late"}:
+        historical_rows = sorted(historical_rows, key=lambda r: sort_value(r, sort_key), reverse=(direction=="desc"))
+
+    # Annotate latest date
+    for r in historical_rows:
+        email = (r.get("email") or "").lower()
+        r["latest_date"] = email_to_latest_date.get(email, "")
+
+    return render(
+        request,
+        "raffle/upload.html",
+        {
+            "form": form,
+            "historical_rows": historical_rows,
+            "runs": runs,
+            "sort": sort_key,
+            "direction": direction,
+            "focus_run_id": focus_run_id,
+        },
+    )
 
 
 @login_required
 def config_view(request: HttpRequest) -> HttpResponse:
-    """Handle event configuration and signup CSV upload"""
+    # master will be computed here from uploaded signups when form is valid
     if request.method == "POST":
         form = ConfigForm(request.POST, request.FILES)
         if form.is_valid():
@@ -115,32 +126,18 @@ def config_view(request: HttpRequest) -> HttpResponse:
             request.session[SESSION_KEYS["event_capacity"]] = int(form.cleaned_data["event_capacity"])
             request.session[SESSION_KEYS["event_date"]] = str(form.cleaned_data["event_date"])  # ISO
             # Build master from uploaded signups and saved historical
-            signups = parse_event_signup_csv(form.cleaned_data["signup_csv"])
-            cutoff_dt = form.cleaned_data.get("event_cutoff")
+            signups = parse_csv_upload(form.cleaned_data["signup_csv"])
             persisted_historical = request.session.get(SESSION_KEYS["historical"]) or []
             if not persisted_historical:
                 hd = HistoricalData.objects.filter(user=request.user).first()
                 if hd and hd.csv_text:
-                    persisted_historical = parse_historical_csv(io.StringIO(hd.csv_text))
-            # If signup CSV has signup date/time column, filter/sort around cutoff
-            # Accept flexible headers like 'signup time', 'timestamp', 'submitted at'
-            if cutoff_dt:
-                for row in signups:
-                    dt_str = row.get("signup date")
-                    row["_signup_dt"] = parse_datetime(dt_str)
-                # People signing up before cutoff are ensured registration: mark response yes
-                for row in signups:
-                    if row.get("_signup_dt") and row["_signup_dt"] <= cutoff_dt:
-                        row["participation status"] = "planned"
-                # Sort: before cutoff first, then by datetime ascending
-                signups.sort(key=lambda r: (not (r.get("_signup_dt") and r["_signup_dt"] <= cutoff_dt), r.get("_signup_dt") or datetime.max))
+                    persisted_historical = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
             master = consolidate_students(signups, persisted_historical)
             request.session[SESSION_KEYS["signups"]] = signups
             request.session[SESSION_KEYS["master"]] = _serialize_for_session(master)
             return redirect("raffle:selection")
     else:
         form = ConfigForm()
-
     return render(request, "raffle/config.html", {"form": form})
 
 
@@ -200,11 +197,11 @@ def results_view(request: HttpRequest) -> HttpResponse:
     if not base_historical:
         hd = HistoricalData.objects.filter(user=request.user).first()
         if hd and hd.csv_text:
-            base_historical = parse_csv_upload(io.StringIO(hd.csv_text))
+            base_historical = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
     adjustments = request.session.get("raffle_adjustments") or {}
 
     updated_csv = generate_updated_history_csv(base_historical, selected, event_name, adjustments, event_date)
-    updated_rows = parse_csv_upload(io.StringIO(updated_csv))
+    updated_rows = parse_csv_upload(io.BytesIO(updated_csv.encode("utf-8")))
 
     # Identify selected participants not present in historical (by email)
     base_emails = { (r.get("email") or "").lower() for r in base_historical }
@@ -256,8 +253,8 @@ def events_list_view(request: HttpRequest) -> HttpResponse:
 @login_required
 def event_detail_view(request: HttpRequest, run_id: int) -> HttpResponse:
     run = RaffleRun.objects.get(user=request.user, id=run_id)
-    selected_rows = parse_csv_upload(io.StringIO(run.selected_csv_text)) if run.selected_csv_text else []
-    eligible_rows = parse_csv_upload(io.StringIO(run.eligible_csv_text)) if run.eligible_csv_text else []
+    selected_rows = parse_csv_upload(io.BytesIO(run.selected_csv_text.encode("utf-8"))) if run.selected_csv_text else []
+    eligible_rows = parse_csv_upload(io.BytesIO(run.eligible_csv_text.encode("utf-8"))) if run.eligible_csv_text else []
     if request.method == "POST":
         # Build adjustments and apply to historical DB
         adjustments = {}
@@ -271,11 +268,11 @@ def event_detail_view(request: HttpRequest, run_id: int) -> HttpResponse:
             }
         # Load historical
         hd = HistoricalData.objects.filter(user=request.user).first()
-        master = parse_csv_upload(io.StringIO(hd.csv_text.encode("utf-8"))) if (hd and hd.csv_text) else []
+        master = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8"))) if (hd and hd.csv_text) else []
         # Apply updated historical with just selected rows; event name from run
         updated_csv = generate_updated_history_csv(master, selected_rows, run.name, adjustments)
         HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": updated_csv})
-        request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.StringIO(updated_csv.encode("utf-8")))
+        request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.BytesIO(updated_csv.encode("utf-8")))
         return redirect("raffle:event_detail", run_id=run.id)
     return render(
         request,
@@ -353,13 +350,13 @@ def edit_historical_view(request: HttpRequest) -> HttpResponse:
         csv_text = output.getvalue()
 
         HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": csv_text})
-        request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.StringIO(csv_text.encode("utf-8"))) if csv_text else []
+        request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.BytesIO(csv_text.encode("utf-8"))) if csv_text else []
         return redirect("raffle:upload")
 
     # GET: build editable rows from current historical
     rows = []
     if hd and hd.csv_text:
-        rows = parse_csv_upload(io.StringIO(hd.csv_text.encode("utf-8")))
+        rows = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
     # Prepare rows with preserved event columns
     editable_rows = []
     preserved_events = []
@@ -420,7 +417,7 @@ def download_updated_database_csv(request: HttpRequest) -> HttpResponse:
     event_name = request.session.get(SESSION_KEYS["event_name"]) or "Event"
     content = generate_updated_history_csv(master, selected, event_name)
     # Persist latest historical database for next runs (session + per-user DB)
-    parsed = parse_csv_upload(io.StringIO(content))
+    parsed = parse_csv_upload(io.BytesIO(content.encode("utf-8")))
     request.session[SESSION_KEYS["historical"]] = parsed
     request.session[SESSION_KEYS["updated_history_csv"]] = content
     HistoricalData.objects.update_or_create(
@@ -465,7 +462,7 @@ def settings_view(request: HttpRequest) -> HttpResponse:
     hd = HistoricalData.objects.filter(user=request.user).first()
     rows = []
     if hd and hd.csv_text:
-        rows = parse_csv_upload(io.StringIO(hd.csv_text.encode("utf-8")))
+        rows = parse_csv_upload(io.BytesIO(hd.csv_text.encode("utf-8")))
     editable_rows = []
     preserved_events = []
     max_event_cols = 0
@@ -593,7 +590,7 @@ def settings_view(request: HttpRequest) -> HttpResponse:
             csv_text = output.getvalue()
 
             HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": csv_text})
-            request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.StringIO(csv_text.encode("utf-8"))) if csv_text else []
+            request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.BytesIO(csv_text.encode("utf-8"))) if csv_text else []
             return redirect("raffle:settings")
 
     form = UserSettingsForm(instance=request.user)
@@ -619,11 +616,6 @@ def _serialize_for_session(rows):
     return out
 
 
-def _deserialize_from_session(serialized_rows):
-    """Deserialize rows from session back to a list of dictionaries."""
-    return [json.loads(json.dumps(r)) for r in serialized_rows]
-
-
 def _to_csv(rows) -> str:
     if not rows:
         return ""
@@ -645,12 +637,4 @@ def _csv_response(content: str, filename: str) -> HttpResponse:
 
 def _safe_name(name: str) -> str:
     return "_".join(name.split())
-
-
-def _to_int(value):
-    """Convert a value to an integer, handling potential errors."""
-    try:
-        return int(value)
-    except (ValueError, TypeError):
-        return 0
 
