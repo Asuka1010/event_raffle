@@ -58,10 +58,6 @@ def upload_view(request: HttpRequest) -> HttpResponse:
                 )
                 # messages.success(request, "Historical database uploaded successfully!") # Removed as per new_code
                 return redirect("raffle:upload")
-            else:
-                pass
-        else:
-            pass
     else:
         form = UploadForm()
 
@@ -73,11 +69,7 @@ def upload_view(request: HttpRequest) -> HttpResponse:
         historical_rows = parse_historical_csv(io.StringIO(hd.csv_text))
     elif SESSION_KEYS["historical"] in request.session:
         # Parse from session
-        session_data = request.session[SESSION_KEYS["historical"]]
-        historical_rows = _deserialize_from_session(session_data)
-    else:
-        # No historical data found
-        pass
+        historical_rows = _deserialize_from_session(request.session[SESSION_KEYS["historical"]])
 
     # Get past raffle runs for event filtering
     runs = RaffleRun.objects.filter(user=request.user).order_by("-date")
@@ -208,11 +200,11 @@ def results_view(request: HttpRequest) -> HttpResponse:
     if not base_historical:
         hd = HistoricalData.objects.filter(user=request.user).first()
         if hd and hd.csv_text:
-            base_historical = parse_historical_csv(io.StringIO(hd.csv_text))
+            base_historical = parse_csv_upload(io.StringIO(hd.csv_text))
     adjustments = request.session.get("raffle_adjustments") or {}
 
     updated_csv = generate_updated_history_csv(base_historical, selected, event_name, adjustments, event_date)
-    updated_rows = parse_historical_csv(io.StringIO(updated_csv))
+    updated_rows = parse_csv_upload(io.StringIO(updated_csv))
 
     # Identify selected participants not present in historical (by email)
     base_emails = { (r.get("email") or "").lower() for r in base_historical }
@@ -279,11 +271,11 @@ def event_detail_view(request: HttpRequest, run_id: int) -> HttpResponse:
             }
         # Load historical
         hd = HistoricalData.objects.filter(user=request.user).first()
-        master = parse_historical_csv(io.StringIO(hd.csv_text)) if (hd and hd.csv_text) else []
+        master = parse_csv_upload(io.StringIO(hd.csv_text.encode("utf-8"))) if (hd and hd.csv_text) else []
         # Apply updated historical with just selected rows; event name from run
         updated_csv = generate_updated_history_csv(master, selected_rows, run.name, adjustments)
         HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": updated_csv})
-        request.session[SESSION_KEYS["historical"]] = parse_historical_csv(io.StringIO(updated_csv))
+        request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.StringIO(updated_csv.encode("utf-8")))
         return redirect("raffle:event_detail", run_id=run.id)
     return render(
         request,
@@ -361,13 +353,13 @@ def edit_historical_view(request: HttpRequest) -> HttpResponse:
         csv_text = output.getvalue()
 
         HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": csv_text})
-        request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.StringIO(csv_text)) if csv_text else []
+        request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.StringIO(csv_text.encode("utf-8"))) if csv_text else []
         return redirect("raffle:upload")
 
     # GET: build editable rows from current historical
     rows = []
     if hd and hd.csv_text:
-        rows = parse_historical_csv(io.StringIO(hd.csv_text))
+        rows = parse_csv_upload(io.StringIO(hd.csv_text.encode("utf-8")))
     # Prepare rows with preserved event columns
     editable_rows = []
     preserved_events = []
@@ -428,7 +420,7 @@ def download_updated_database_csv(request: HttpRequest) -> HttpResponse:
     event_name = request.session.get(SESSION_KEYS["event_name"]) or "Event"
     content = generate_updated_history_csv(master, selected, event_name)
     # Persist latest historical database for next runs (session + per-user DB)
-    parsed = parse_historical_csv(io.StringIO(content))
+    parsed = parse_csv_upload(io.StringIO(content))
     request.session[SESSION_KEYS["historical"]] = parsed
     request.session[SESSION_KEYS["updated_history_csv"]] = content
     HistoricalData.objects.update_or_create(
@@ -473,7 +465,7 @@ def settings_view(request: HttpRequest) -> HttpResponse:
     hd = HistoricalData.objects.filter(user=request.user).first()
     rows = []
     if hd and hd.csv_text:
-        rows = parse_historical_csv(io.StringIO(hd.csv_text))
+        rows = parse_csv_upload(io.StringIO(hd.csv_text.encode("utf-8")))
     editable_rows = []
     preserved_events = []
     max_event_cols = 0
@@ -601,7 +593,7 @@ def settings_view(request: HttpRequest) -> HttpResponse:
             csv_text = output.getvalue()
 
             HistoricalData.objects.update_or_create(user=request.user, defaults={"csv_text": csv_text})
-            request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.StringIO(csv_text)) if csv_text else []
+            request.session[SESSION_KEYS["historical"]] = parse_csv_upload(io.StringIO(csv_text.encode("utf-8"))) if csv_text else []
             return redirect("raffle:settings")
 
     form = UserSettingsForm(instance=request.user)
@@ -629,8 +621,7 @@ def _serialize_for_session(rows):
 
 def _deserialize_from_session(serialized_rows):
     """Deserialize rows from session back to a list of dictionaries."""
-    # The data is already in the correct format, just return it directly
-    return serialized_rows
+    return [json.loads(json.dumps(r)) for r in serialized_rows]
 
 
 def _to_csv(rows) -> str:

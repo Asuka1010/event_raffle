@@ -22,70 +22,30 @@ def _strip_bom(text):
 
 def parse_csv_upload(uploaded_file) -> List[StudentRow]:
     """Generic CSV parser for backward compatibility"""
-    # Handle both file objects and string content
-    if hasattr(uploaded_file, 'read'):
-        # It's a file-like object
-        text = uploaded_file.read()
-        if isinstance(text, bytes):
-            text = text.decode("utf-8")
-    else:
-        # It's already a string
-        text = str(uploaded_file)
-    
+    text = uploaded_file.read().decode("utf-8")
     text = _strip_bom(text)
     reader = csv.DictReader(io.StringIO(text))
     rows = []
     for row in reader:
-        # Safely handle different data types
-        safe_row = {}
-        for k, v in row.items():
-            # Handle key
-            if k is None:
-                k = ""
-            elif isinstance(k, str):
-                k = k.strip()
-            else:
-                k = str(k).strip()
-            
-            # Handle value
-            if v is None:
-                v = ""
-            elif isinstance(v, (list, tuple)):
-                v = ", ".join(str(item).strip() for item in v)
-            elif isinstance(v, str):
-                v = v.strip()
-            else:
-                v = str(v).strip()
-            
-            safe_row[k] = v
-        rows.append(safe_row)
+        rows.append({k.strip(): v.strip() if v else "" for k, v in row.items()})
     return rows
 
 
 def parse_event_signup_csv(uploaded_file) -> List[StudentRow]:
     """Parse event signup CSV with specific format: Attendee ID, Firstname, Lastname, Participation status, Email, Date"""
-    # Handle both file objects and string content
-    if hasattr(uploaded_file, 'read'):
-        # It's a file-like object
-        text = uploaded_file.read()
-        if isinstance(text, bytes):
-            text = text.decode("utf-8")
-    else:
-        # It's already a string
-        text = str(uploaded_file)
-    
+    text = uploaded_file.read().decode("utf-8")
     text = _strip_bom(text)
     reader = csv.DictReader(io.StringIO(text))
     rows = []
     for row in reader:
         # Map to our expected format
         mapped_row = {
-            "email": (row.get("Email") or "").strip(),
-            "firstname": (row.get("Firstname") or "").strip(),
-            "lastname": (row.get("Lastname") or "").strip(),
-            "participation status": (row.get("Participation status") or "").strip(),
-            "attendee id": (row.get("Attendee ID") or "").strip(),
-            "signup date": (row.get("Date") or "").strip(),
+            "email": row.get("Email", "").strip(),
+            "firstname": row.get("Firstname", "").strip(),
+            "lastname": row.get("Lastname", "").strip(),
+            "participation status": row.get("Participation status", "").strip(),
+            "attendee id": row.get("Attendee ID", "").strip(),
+            "signup date": row.get("Date", "").strip(),
         }
         rows.append(mapped_row)
     return rows
@@ -93,109 +53,46 @@ def parse_event_signup_csv(uploaded_file) -> List[StudentRow]:
 
 def parse_historical_csv(uploaded_file) -> List[StudentRow]:
     """Parse historical database CSV with specific format"""
-    # Handle both file objects and string content
-    if hasattr(uploaded_file, 'read'):
-        # It's a file-like object
-        text = uploaded_file.read()
-        if isinstance(text, bytes):
-            text = text.decode("utf-8")
-    else:
-        # It's already a string
-        text = str(uploaded_file)
-    
+    text = uploaded_file.read().decode("utf-8")
     text = _strip_bom(text)
-    
-    # Split into lines and find the header row
-    lines = text.strip().split('\n')
-    header_row = None
-    data_start_row = 0
-    
-    for i, line in enumerate(lines):
-        if 'Email' in line and 'First Name' in line and 'Last Name' in line:
-            header_row = line
-            data_start_row = i + 1
-            break
-    
-    if not header_row:
-        return []
-    
-    # Parse the header to get column positions
-    header_columns = list(csv.reader([header_row]))[0]
-    
-    # Find the positions of important columns
-    email_col = None
-    first_name_col = None
-    last_name_col = None
-    class_col = None
-    absent_col = None
-    late_col = None
-    attended_col = None
-    
-    for i, col in enumerate(header_columns):
-        col_clean = col.strip()
-        if col_clean == "Email":
-            email_col = i
-        elif col_clean == "First Name":
-            first_name_col = i
-        elif col_clean == "Last Name":
-            last_name_col = i
-        elif col_clean == "Class":
-            class_col = i
-        elif col_clean == "Absent":
-            absent_col = i
-        elif col_clean == "Late":
-            late_col = i
-        elif col_clean == "Attended":
-            attended_col = i
-    
-    if email_col is None or first_name_col is None or last_name_col is None:
-        return []
-    
-    # Parse data rows
+    reader = csv.DictReader(io.StringIO(text))
     rows = []
-    for i, line in enumerate(lines[data_start_row:], data_start_row):
-        if not line.strip():
-            continue
-            
-        row_data = list(csv.reader([line]))[0]
+    for row in reader:
+        # Extract event columns (all columns except the standard ones)
+        event_columns = {}
+        standard_columns = {"Email", "Preferred Name/Nick Name", "First Name", "Last Name", "Class", "Absent", "Late", "Attended"}
         
-        # Check if row has essential data
-        if (len(row_data) <= max(email_col, first_name_col, last_name_col) or
-            not row_data[email_col] or not row_data[first_name_col] or not row_data[last_name_col]):
-            continue
+        for key, value in row.items():
+            if key not in standard_columns and key.strip():
+                event_columns[key] = value.strip()
         
         # Map to our expected format
         mapped_row = {
-            "email": row_data[email_col].strip(),
-            "first name": row_data[first_name_col].strip(),
-            "last name": row_data[last_name_col].strip(),
-            "class": row_data[class_col].strip() if class_col and len(row_data) > class_col else "",
-            "absent": row_data[absent_col].strip() if absent_col and len(row_data) > absent_col else "0",
-            "late": row_data[late_col].strip() if late_col and len(row_data) > late_col else "0",
-            "attended": row_data[attended_col].strip() if attended_col and len(row_data) > attended_col else "0",
-            "events_attended": "",
-            "latest attended": "",
+            "email": row.get("Email", "").strip(),
+            "first name": row.get("First Name", "").strip(),
+            "last name": row.get("Last Name", "").strip(),
+            "class": row.get("Class", "").strip(),
+            "absent": row.get("Absent", "0"),
+            "late": row.get("Late", "0"),
+            "attended": row.get("Attended", "0"),
+            "events_attended": "",  # Will be populated from event columns
+            "latest attended": "",  # Will be populated from event columns
         }
         
-        # Process event columns (columns between Class and Absent)
+        # Process event columns to build events_attended and latest attended
         attended_events = []
         latest_event = ""
-        if class_col and absent_col:
-            for j in range(class_col + 1, absent_col):
-                if j < len(row_data) and j < len(header_columns):
-                    event_name = header_columns[j].strip()
-                    status = row_data[j].strip() if j < len(row_data) else ""
-                    if event_name and status.lower() == "attended":
-                        attended_events.append(event_name)
-                        if not latest_event or event_name > latest_event:
-                            latest_event = event_name
+        for event_name, status in event_columns.items():
+            if status.lower() == "attended":
+                attended_events.append(event_name)
+                if not latest_event or event_name > latest_event:  # Simple string comparison for now
+                    latest_event = event_name
         
         if attended_events:
             mapped_row["events_attended"] = ", ".join(attended_events)
             mapped_row["latest attended"] = latest_event
         
         rows.append(mapped_row)
-    
     return rows
 
 
@@ -337,11 +234,7 @@ def run_priority_raffle(students, capacity):
     selected = eligible_sorted[:capacity]
     remaining = eligible_sorted[capacity:]
     
-    # Return in the format expected by the view: (eligible_ranked, selected)
-    # eligible_ranked should include both selected and remaining students
-    eligible_ranked = eligible_sorted
-    
-    return eligible_ranked, selected
+    return selected, remaining
 
 
 def generate_ranking_csv(eligible_ranked):

@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 
 
 class UploadForm(forms.Form):
-    historical_csv = forms.FileField(allow_empty_file=False, required=True, label="Historical Database CSV")
+    historical_csv = forms.FileField(allow_empty_file=False, required=False, label="Historical Database CSV")
 
 
 class ConfigForm(forms.Form):
